@@ -41,14 +41,27 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from shared.runner import DemoRegistry
+from shared.runner import DemoRegistry, register_demo
 
 # ---------------------------------------------------------------------------
 # Global registry — demos register themselves when their modules are imported.
-# In Phase 1 this is empty. Phase 2+ demo modules will import this and use
-# @register_demo(registry) to add themselves.
+# Each demo class is decorated with @register_demo(registry) below so
+# it appears in `presenter list` and `presenter run`.
 # ---------------------------------------------------------------------------
 registry = DemoRegistry()
+
+# ---------------------------------------------------------------------------
+# Demo registration — import each demo and register it.
+# The order here determines the order in `presenter list`.
+# The TALK_SEQUENCE below determines the order in `presenter run all`.
+# ---------------------------------------------------------------------------
+from demo_01_banana_injection.run import BananaInjection  # noqa: E402
+from demo_06_tool_mechanics.run import ToolMechanics  # noqa: E402
+from demo_gopro.run import GoPro  # noqa: E402
+
+registry.register(BananaInjection())
+registry.register(GoPro())
+registry.register(ToolMechanics())
 
 # The full presentation sequence matching the talk runsheet.
 # This is the order `presenter run all` uses.

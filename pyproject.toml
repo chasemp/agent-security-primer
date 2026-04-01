@@ -28,7 +28,13 @@ presenter = "presenter:cli"
 # Without py-modules, setuptools won't install presenter.py and the
 # `presenter` entry point will fail with ModuleNotFoundError.
 py-modules = ["presenter", "conftest"]
-packages = ["shared", "tests"]
+packages = [
+    "shared",
+    "tests",
+    "demo_01_banana_injection",
+    "demo_gopro",
+    "demo_06_tool_mechanics",
+]
 
 [build-system]
 requires = ["setuptools>=68.0"]
