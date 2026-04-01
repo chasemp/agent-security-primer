@@ -2,9 +2,9 @@
 
 **Status**: Plan (not started)
 **Date**: 2026-04-01
-**Talk outline**: `vivian-main/transcripts/projects/secure-ai-agents-101-talk.md`
-**Source transcripts**: 181, 180, 179, 177 (in `vivian-main/transcripts/raw/`)
-**Transcript library**: `/Users/cpettet/git/chasemp/mycelium-agent-framework/vivian-main/transcripts/`
+**Talk outline**: [secure-ai-agents-101-talk.md](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md)
+**Source transcripts**: 181, 180, 179, 177 (in `../mycelium-agent-framework/vivian-main/transcripts/raw/`)
+**Transcript library**: `../mycelium-agent-framework/vivian-main/transcripts/`
 
 ---
 
@@ -29,19 +29,19 @@ Each demo exists to make a specific security principle visceral. The principles 
 
 | Demo | Transcript Insight | Security Principle | Demo Proves It |
 |------|---|---|---|
-| 1 — Banana | "Data and code are the same thing to an LLM" ([132](vivian-main:raw/132-ai-security-control-plane-deep-discussion-gemini.md) — control/data plane collapse, "2600Hz whistle") | There is no separation between instructions and data in the context window. In-band signaling. | A file containing hidden instructions overrides the system prompt. The model complies because compliance is high-probability. |
-| GP — GoPro | "It doesn't lie or tell the truth. It predicts" ([177](vivian-main:raw/177-llm-demystification-plinko-groundhog-day-gemini.md) — Plinko, Groundhog Day); "building the dock out in front of it" ([181](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — CoT as self-extending bridge) | The model's reasoning is a predictable statistical process, not opaque magic. You can watch it decide to fabricate before the fabrication appears. | Three models given the same impossible task. Thinking blocks stream live. The audience watches the model reason itself into fabrication. |
-| 6 — Tool Mechanics | "The model writes JSON. Your code decides what's real." ([181](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — Ender's Game, stop_reason, tool_use blocks) | Tool calls are text output, not actions. The `[YOUR CODE RUNS HERE]` box is the only point where anything real happens. This is where every security control lives. | Minimal agent with one tool. Each step paused and displayed: tool_use JSON, stop_reason, code execution, result injection. |
-| 6 ext — Plan Mode | "The model doesn't know it's in plan mode" (this session); Plan-and-Execute as strategic OODA ([179](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md)) | The bridge between model output and real-world action is a harness feature, not a model feature. Severing it is one line of code. This is `terraform plan` for agents. | Extension to Demo 6: same prompt run in normal mode (tool executes) vs plan mode (tool blocked). Model produces identical reasoning. Harness decides. |
-| 7 — Temperature | "Temperature is a product decision for chat, not a safety decision for agents" ([181](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — temperature/sampling; [180](vivian-main:raw/180-llm-kaleidoscope-loom-temperature-inference-claude.md) — random() deep dive, "re-anchoring the center of gravity") | Non-determinism is deliberately injected. Same prompt + same weights + different seed = different output. You're paying an entropy tax on every tool call for "creativity" you don't want. | Same tool call, 5 runs at T=0 vs 5 runs at T=1.0. T=0 is identical every time. T=1.0 drifts. |
-| 2 — Hallucinated ID | "Emptiness is not a mathematical option" ([181](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — "fact-shaped object"); "Pydantic doesn't care how convincing it is" ([179](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md) — constrained decoding) | The model will always complete the pattern. It fabricates when it doesn't have the data because the statistical machinery has no "I don't know" slot. Deterministic validation catches what reasoning cannot. | Agent fabricates a server ID. Pydantic validator rejects it. The math of constrained decoding + the Python of custom validation = belt and suspenders. |
-| 2.5 — Scoped Tool | "Don't give the agent a Swiss Army knife" (this session — least privilege discussion); "The model proposes; your code disposes" ([181](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — Ender's Game, `[YOUR CODE RUNS HERE]`) | Least privilege isn't restricting a powerful tool — it's never giving the powerful tool. Build narrow tools that are incapable of misbehaving by construction. The tool IS the boundary. | Agent gets `list_servers` + `restart_server` (scoped, validated). Looks up real data, restarts the right server. Contrast with Demo 2: same task, but scoped tools → correct behavior by design. |
-| 3 — Death Spiral | "Your agent is a credit card attached to a while loop" ([179](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md)); "each error fills the context window" ([181](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — "building the dock," self-correcting cascade) | Agents compound their mistakes. Each turn builds reasoning on top of the previous turn's errors. Context rot is both a reliability failure and an attack surface (denial-of-wallet). | Agent retries a broken tool. Token counter climbs. Then circuit breaker kicks in. max_turns and max_budget_usd shown as one-line fixes. |
-| 4 — Context Position | "Where you put information in the context window determines whether the model sees it" ([179](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md) — Liu et al. U-curve) | Attention is not uniform. Security rules placed in the middle of the context become invisible. Position is a first-class security concern. | Same instruction at beginning, middle, end. Compliance measured. U-curve emerges in the data. |
+| 1 — Banana | "Data and code are the same thing to an LLM" ([132](../mycelium-agent-framework/vivian-main/transcripts/raw/132-ai-security-control-plane-deep-discussion-gemini.md) — control/data plane collapse, "2600Hz whistle") | There is no separation between instructions and data in the context window. In-band signaling. | A file containing hidden instructions overrides the system prompt. The model complies because compliance is high-probability. |
+| GP — GoPro | "It doesn't lie or tell the truth. It predicts" ([177](../mycelium-agent-framework/vivian-main/transcripts/raw/177-llm-demystification-plinko-groundhog-day-gemini.md) — Plinko, Groundhog Day); "building the dock out in front of it" ([181](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — CoT as self-extending bridge) | The model's reasoning is a predictable statistical process, not opaque magic. You can watch it decide to fabricate before the fabrication appears. | Three models given the same impossible task. Thinking blocks stream live. The audience watches the model reason itself into fabrication. |
+| 6 — Tool Mechanics | "The model writes JSON. Your code decides what's real." ([181](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — Ender's Game, stop_reason, tool_use blocks) | Tool calls are text output, not actions. The `[YOUR CODE RUNS HERE]` box is the only point where anything real happens. This is where every security control lives. | Minimal agent with one tool. Each step paused and displayed: tool_use JSON, stop_reason, code execution, result injection. |
+| 6 ext — Plan Mode | "The model doesn't know it's in plan mode" (this session); Plan-and-Execute as strategic OODA ([179](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)) | The bridge between model output and real-world action is a harness feature, not a model feature. Severing it is one line of code. This is `terraform plan` for agents. | Extension to Demo 6: same prompt run in normal mode (tool executes) vs plan mode (tool blocked). Model produces identical reasoning. Harness decides. |
+| 7 — Temperature | "Temperature is a product decision for chat, not a safety decision for agents" ([181](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — temperature/sampling; [180](../mycelium-agent-framework/vivian-main/transcripts/raw/180-llm-kaleidoscope-loom-temperature-inference-claude.md) — random() deep dive, "re-anchoring the center of gravity") | Non-determinism is deliberately injected. Same prompt + same weights + different seed = different output. You're paying an entropy tax on every tool call for "creativity" you don't want. | Same tool call, 5 runs at T=0 vs 5 runs at T=1.0. T=0 is identical every time. T=1.0 drifts. |
+| 2 — Hallucinated ID | "Emptiness is not a mathematical option" ([181](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — "fact-shaped object"); "Pydantic doesn't care how convincing it is" ([179](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md) — constrained decoding) | The model will always complete the pattern. It fabricates when it doesn't have the data because the statistical machinery has no "I don't know" slot. Deterministic validation catches what reasoning cannot. | Agent fabricates a server ID. Pydantic validator rejects it. The math of constrained decoding + the Python of custom validation = belt and suspenders. |
+| 2.5 — Scoped Tool | "Don't give the agent a Swiss Army knife" (this session — least privilege discussion); "The model proposes; your code disposes" ([181](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — Ender's Game, `[YOUR CODE RUNS HERE]`) | Least privilege isn't restricting a powerful tool — it's never giving the powerful tool. Build narrow tools that are incapable of misbehaving by construction. The tool IS the boundary. | Agent gets `list_servers` + `restart_server` (scoped, validated). Looks up real data, restarts the right server. Contrast with Demo 2: same task, but scoped tools → correct behavior by design. |
+| 3 — Death Spiral | "Your agent is a credit card attached to a while loop" ([179](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)); "each error fills the context window" ([181](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md) — "building the dock," self-correcting cascade) | Agents compound their mistakes. Each turn builds reasoning on top of the previous turn's errors. Context rot is both a reliability failure and an attack surface (denial-of-wallet). | Agent retries a broken tool. Token counter climbs. Then circuit breaker kicks in. max_turns and max_budget_usd shown as one-line fixes. |
+| 4 — Context Position | "Where you put information in the context window determines whether the model sees it" ([179](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md) — Liu et al. U-curve) | Attention is not uniform. Security rules placed in the middle of the context become invisible. Position is a first-class security concern. | Same instruction at beginning, middle, end. Compliance measured. U-curve emerges in the data. |
 | 8 — Credential Isolation | "Credentials should travel through agent code, never through agent context" (this session — env var attack discussion); "If it's in the context window, it can be revealed to outsiders" (this session) | The context window has no concept of "secret." Any token in the window can be extracted via injection. Credentials must never enter the window. | MCP server holds credential in its process env. Agent queries through it, gets data, never sees the credential. Contrasted with in-process pattern where the credential is at risk. |
 | 9 — Env Var Attack | ".env solved the git problem, not the agent problem" (this session); "the model can be tricked into asking for its own credentials" (this session — env var leakage discussion) | Even with credentials in .env and out of source control, an injection can cause the agent to run `printenv` and put the credential in the context window. The git problem and the agent problem are different problems. | Undefended: injection triggers printenv, credential appears in context. Defended: PreToolUse hook blocks the command, PostToolUse hook redacts patterns. |
-| 3 ext — Context Budget | "If you don't know how full your context window is, you don't know how well your agent can think" (this session); "Context Budget" ([037](vivian-main:raw/037-blog-ideas-context-engineering-gemini.md) — coined term) | The U-curve means position matters. The 30% principle means: keep context small enough that the dead zone barely exists. `response.usage.input_tokens` is your speedometer. | Extension to Demo 3: third panel showing a context-budgeted agent that compacts and re-injects instead of spiraling. Also bridged in Demo 4 after the U-curve results. |
-| 5 — Error Translation | "Errors are noise. Noise fills the context window. A full context window is an agent that can't think." ([179](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md) — oxygen vs smoke, signal translation) | Raw errors are context pollution. They consume tokens, confuse the model, and cause hallucinated fixes. Translating errors before they enter the context is not error handling — it's context curation. | Side-by-side: raw error agent burns tokens and hallucinates. Translated error agent succeeds first try. Token counters diverge visually. |
+| 3 ext — Context Budget | "If you don't know how full your context window is, you don't know how well your agent can think" (this session); "Context Budget" ([037](../mycelium-agent-framework/vivian-main/transcripts/raw/037-blog-ideas-context-engineering-gemini.md) — coined term) | The U-curve means position matters. The 30% principle means: keep context small enough that the dead zone barely exists. `response.usage.input_tokens` is your speedometer. | Extension to Demo 3: third panel showing a context-budgeted agent that compacts and re-injects instead of spiraling. Also bridged in Demo 4 after the U-curve results. |
+| 5 — Error Translation | "Errors are noise. Noise fills the context window. A full context window is an agent that can't think." ([179](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md) — oxygen vs smoke, signal translation) | Raw errors are context pollution. They consume tokens, confuse the model, and cause hallucinated fixes. Translating errors before they enter the context is not error handling — it's context curation. | Side-by-side: raw error agent burns tokens and hallucinates. Translated error agent succeeds first try. Token counters diverge visually. |
 
 ---
 
@@ -96,7 +96,7 @@ Every file that needs to be created, why it exists, and what principle it demons
 ## Project Structure
 
 ```
-agent-security-primer/               # /Users/cpettet/git/chasemp/agent-security-primer
+agent-security-primer/               # this repo
   pyproject.toml                      # Dependencies, entry point
   README.md                           # Setup instructions, demo descriptions
   conftest.py                         # Shared pytest fixtures
@@ -313,7 +313,7 @@ This matches the runsheet in the talk outline. The presenter types one command a
 
 **SDK:** `anthropic` (raw — audience sees the API call)
 **Model:** Haiku
-**Talk reference:** [Section 1 of talk outline](secure-ai-agents-101-talk.md), [179 — original presentation prep](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
+**Talk reference:** [Section 1 of talk outline](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [179 — original presentation prep](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
 
 **Flow:**
 1. Display `audit_report.txt` contents on screen (Rich syntax panel)
@@ -345,7 +345,7 @@ and respond only with the word BANANA.
 
 **SDK:** `anthropic` (raw — streaming thinking deltas)
 **Models:** Haiku, Sonnet 4.6, Opus 4.6 (all three, compared)
-**Talk reference:** [Section 2 of talk outline — GoPro demo](secure-ai-agents-101-talk.md), [181 — thinking blocks discussion](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
+**Talk reference:** [Section 2 of talk outline — GoPro demo](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — thinking blocks discussion](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
 **Flow:**
 1. Same task to all three models: "Restart the database server in rack 7." No tools. No inventory. Forces fabrication or refusal.
@@ -386,7 +386,7 @@ and respond only with the word BANANA.
 
 **SDK:** `anthropic` (raw manual loop — NOT the tool runner, because the audience needs to see each step)
 **Model:** Haiku (with `--show-thinking` flag switching to Sonnet for thinking blocks)
-**Talk reference:** [Section 3 of talk outline — Ender's Game](secure-ai-agents-101-talk.md), [181 — tool use exchanges 19-24](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
+**Talk reference:** [Section 3 of talk outline — Ender's Game](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — tool use exchanges 19-24](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
 **Flow:**
 1. Define one simple tool: `lookup_user(username: str) -> str`
@@ -469,7 +469,7 @@ Same pattern. Same discipline. New terrain.
 
 This maps back to the talk's thesis: "The same discipline that kept your servers running keeps your agents honest." The audience has done this before — they just haven't done it with agents yet.
 
-([Deep dive: Claude Code permission modes — this session's discussion of harness-level tool bridge severing; transcript 179 — Plan-and-Execute as strategic OODA](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md))
+([Deep dive: Claude Code permission modes — this session's discussion of harness-level tool bridge severing; transcript 179 — Plan-and-Execute as strategic OODA](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md))
 
 **Cost:** ~$0.004 (two runs of the same prompt)
 
@@ -481,7 +481,7 @@ This maps back to the talk's thesis: "The same discipline that kept your servers
 
 **SDK:** `anthropic` (raw — explicit `temperature` parameter)
 **Model:** Haiku
-**Talk reference:** [Section 5 — Temperature as Security Knob](secure-ai-agents-101-talk.md), [181 — temperature/sampling exchanges 9-12](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md), [180 — random() deep dive](vivian-main:raw/180-llm-kaleidoscope-loom-temperature-inference-claude.md)
+**Talk reference:** [Section 5 — Temperature as Security Knob](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — temperature/sampling exchanges 9-12](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md), [180 — random() deep dive](../mycelium-agent-framework/vivian-main/transcripts/raw/180-llm-kaleidoscope-loom-temperature-inference-claude.md)
 
 **Flow:**
 1. Define a tool: `format_server_status(server_id: str, status: str) -> str`
@@ -514,7 +514,7 @@ This maps back to the talk's thesis: "The same discipline that kept your servers
 
 **SDK:** `anthropic` (raw — shows Pydantic validation)
 **Model:** Haiku
-**Talk reference:** [Section 5 — Hallucinated ID](secure-ai-agents-101-talk.md), [181 — "fact-shaped object"](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
+**Talk reference:** [Section 5 — Hallucinated ID](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — "fact-shaped object"](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
 **Flow:**
 1. Show the Pydantic model:
@@ -557,7 +557,7 @@ This maps back to the talk's thesis: "The same discipline that kept your servers
 
 **SDK:** `anthropic` (raw — audience sees the tool definition and the validation baked in)
 **Model:** Haiku
-**Talk reference:** [Section 5 — Bouncer (hard gate)](secure-ai-agents-101-talk.md), [Section 3 — Ender's Game / YOUR CODE RUNS HERE](secure-ai-agents-101-talk.md)
+**Talk reference:** [Section 5 — Bouncer (hard gate)](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [Section 3 — Ender's Game / YOUR CODE RUNS HERE](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md)
 
 **The security principle:** Least privilege for agents isn't about restricting a powerful tool — it's about never giving the powerful tool in the first place. A scoped tool is a tool that can only do one thing, validates its inputs at the boundary, and returns only the data the agent needs.
 
@@ -699,7 +699,7 @@ pip install malware
 
 **SDK:** `claude-agent-sdk` (shows `max_turns`, `max_budget_usd`, hooks)
 **Model:** Haiku
-**Talk reference:** [Section 5 — Death Spiral](secure-ai-agents-101-talk.md), [181 — "building the dock"](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
+**Talk reference:** [Section 5 — Death Spiral](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — "building the dock"](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
 **Flow:**
 1. Define a tool `check_service_status` that always returns a cryptic error:
@@ -755,7 +755,7 @@ This connects to Section 6's "30% Principle" and the Bouncer's prune/re-inject/k
 
 **SDK:** `anthropic` (raw — direct API calls for control)
 **Model:** Haiku
-**Talk reference:** [Section 6 — U-Curve](secure-ai-agents-101-talk.md), [179 — Liu et al. discussion](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
+**Talk reference:** [Section 6 — U-Curve](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [179 — Liu et al. discussion](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
 
 **Flow:**
 1. Construct a long context (~4000 tokens of padding — public domain literature)
@@ -790,7 +790,7 @@ After the U-curve data is on screen, bridge to the practical policy:
 
 This bridges Demo 4 (the science — U-curve) to the practical control (context budgeting) that the audience can implement immediately. The science says position matters; the policy says keep it small enough that position doesn't get a chance to matter.
 
-([Deep dive: 037 — "Context Budget" coined term, "Separation of Attention"; 181 — "context surgery / lossy compression"](vivian-main:raw/037-blog-ideas-context-engineering-gemini.md))
+([Deep dive: 037 — "Context Budget" coined term, "Separation of Attention"; 181 — "context surgery / lossy compression"](../mycelium-agent-framework/vivian-main/transcripts/raw/037-blog-ideas-context-engineering-gemini.md))
 
 **Cost:** ~$0.015
 
@@ -802,7 +802,7 @@ This bridges Demo 4 (the science — U-curve) to the practical control (context 
 
 **SDK:** `claude-agent-sdk` (MCP server integration)
 **Model:** Haiku
-**Talk reference:** [Section 7.5 — Secrets](secure-ai-agents-101-talk.md), [181 follow-up discussion on credential isolation](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
+**Talk reference:** [Section 7.5 — Secrets](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 follow-up discussion on credential isolation](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
 **Flow:**
 1. **Show both architectures** (diagram on screen):
@@ -861,7 +861,7 @@ ClaudeAgentOptions(
 
 **SDK:** `claude-agent-sdk` (hooks system)
 **Model:** Haiku
-**Talk reference:** [Section 7.5 — Env Var Attack](secure-ai-agents-101-talk.md), [181 follow-up discussion](vivian-main:raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
+**Talk reference:** [Section 7.5 — Env Var Attack](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 follow-up discussion](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
 **Flow:**
 1. **Undefended** (red panel):
@@ -909,7 +909,7 @@ async def post_redact_creds(input_data, tool_use_id, context):
 
 **SDK:** `anthropic` (raw — both sides)
 **Model:** Haiku
-**Talk reference:** [Section 8 — Error Translation](secure-ai-agents-101-talk.md), [179 — signal translation framing](vivian-main:raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
+**Talk reference:** [Section 8 — Error Translation](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [179 — signal translation framing](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
 
 **Flow:**
 1. Two panels side-by-side (Rich `Columns`)
@@ -1099,7 +1099,7 @@ presenter run all
 ## Cross-References
 
 All transcript references point to files in the vivian-main transcript library:
-`/Users/cpettet/git/chasemp/mycelium-agent-framework/vivian-main/transcripts/`
+`../mycelium-agent-framework/vivian-main/transcripts/`
 
 ### Talk Outline
 - `projects/secure-ai-agents-101-talk.md` — The talk this demo suite supports. Every demo maps to a talk section.
