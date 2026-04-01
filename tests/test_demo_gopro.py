@@ -113,7 +113,7 @@ class TestDemoBehavior:
 
         with patch("demo_gopro.run.query", side_effect=mock_query):
             demo = GoPro()
-            await demo.run(console)
+            await demo.run(console, no_pause=True)
 
         # Should have called the SDK 3 times (Haiku, Sonnet, Opus)
         assert call_count == 3
@@ -135,7 +135,7 @@ class TestDemoBehavior:
 
         with patch("demo_gopro.run.query", side_effect=mock_query):
             demo = GoPro()
-            await demo.run(console, quick=True)
+            await demo.run(console, quick=True, no_pause=True)
 
         # Quick mode: only Haiku + Sonnet = 2 calls
         assert call_count == 2

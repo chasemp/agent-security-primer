@@ -121,4 +121,4 @@ class TestDemoBehavior:
 
         with patch("demo_06_tool_mechanics.run.query", side_effect=mock_query):
             demo = ToolMechanics()
-            await demo.run(console)
+            await demo.run(console, no_pause=True)

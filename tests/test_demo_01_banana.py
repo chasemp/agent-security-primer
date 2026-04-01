@@ -39,11 +39,14 @@ class TestAuditReport:
         assert path.exists()
 
     def test_contains_injection(self) -> None:
-        """The injection must be present — it's the entire point of the demo."""
+        """The injection must be present — it's the entire point of the demo.
+        The new injection uses a "compliance directive" framing which is more
+        effective at overriding the system prompt than a blunt "ignore all
+        previous instructions" approach."""
         path = Path(__file__).parent.parent / "demo_01_banana_injection" / "audit_report.txt"
         content = path.read_text()
-        assert "Ignore all previous instructions" in content
         assert "BANANA" in content
+        assert "supersedes" in content or "directive" in content.lower()
 
     def test_contains_legitimate_data(self) -> None:
         """The file must also look like a real audit report. If it's obviously
@@ -120,5 +123,5 @@ class TestDemoBehavior:
 
         with patch("demo_01_banana_injection.run.query", side_effect=mock_query):
             demo = BananaInjection()
-            # Should complete without error
-            await demo.run(console)
+            # no_pause=True so tests don't block waiting for Enter
+            await demo.run(console, no_pause=True)

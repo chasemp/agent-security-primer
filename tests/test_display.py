@@ -17,10 +17,13 @@ We test by capturing Rich console output to strings and checking structure.
 No visual/screenshot testing — we verify the data is present and formatted.
 """
 
+from io import StringIO
+
 from rich.console import Console
 
 from shared.display import (
     DemoPanel,
+    Presenter,
     SideBySide,
     code_block,
     punchline,
@@ -214,3 +217,56 @@ class TestToolUseBlock:
         output = _render(tool_use_block(data))
         assert "lookup_user" in output
         assert "alice" in output
+
+
+# ---------------------------------------------------------------------------
+# Presenter — interactive step controller
+# ---------------------------------------------------------------------------
+
+class TestPresenter:
+    """Presenter wraps a Console and controls interactive pacing.
+
+    In interactive mode (default): presenter.step() prints the step text
+    and waits for Enter before continuing. The presenter narrates while
+    the audience reads.
+
+    In speedrun mode (--no-pause): steps print immediately with no pause.
+    Used for recording or rehearsal.
+
+    The Presenter replaces direct console.print(step(...)) calls in demos.
+    Demos receive a Presenter instead of a raw Console.
+    """
+
+    def test_step_prints_text(self) -> None:
+        """In no-pause mode, step prints the text without blocking."""
+        console = Console(file=None, force_terminal=True, width=100)
+        p = Presenter(console, interactive=False)
+        with console.capture() as capture:
+            p.step("Reading the file", number=1)
+        output = capture.get()
+        assert "Reading the file" in output
+        assert "1" in output
+
+    def test_show_prints_renderable(self) -> None:
+        """presenter.show() prints any Rich renderable (panels, text, etc.)."""
+        console = Console(file=None, force_terminal=True, width=100)
+        p = Presenter(console, interactive=False)
+        with console.capture() as capture:
+            p.show(punchline("Test punchline"))
+        output = capture.get()
+        assert "Test punchline" in output
+
+    def test_interactive_mode_is_default(self) -> None:
+        """Interactive (pause on step) should be the default behavior."""
+        console = Console(file=None, force_terminal=True, width=100)
+        p = Presenter(console)
+        assert p.interactive is True
+
+    def test_punchline_convenience(self) -> None:
+        """presenter.punchline() is a shortcut for showing the punchline."""
+        console = Console(file=None, force_terminal=True, width=100)
+        p = Presenter(console, interactive=False)
+        with console.capture() as capture:
+            p.punchline("Data and code are the same thing.")
+        output = capture.get()
+        assert "Data and code are the same thing" in output

@@ -6,38 +6,25 @@ It shows the exact mechanism by which models "call tools" — and reveals that
 tool calls are just JSON output. The model writes JSON. Your code decides
 what's real.
 
-THE ENDER'S GAME ANALOGY:
-  In the novel, Ender thinks he's playing a simulation, but it's real.
-  With LLMs, it's the OPPOSITE: the model thinks it's doing something real
-  (looking up a user), but it's just writing JSON. YOUR CODE runs in the
-  gap between the model's request and the actual execution. That gap is
-  where every security control in this talk lives.
-
 HOW TOOL CALLS ACTUALLY WORK:
   1. You define a tool schema (name, description, parameters)
   2. You send a prompt that might need the tool
-  3. The model responds with a tool_use content block:
-       {"type": "tool_use", "name": "lookup_user", "input": {"username": "alice"}, "id": "toolu_abc123"}
-  4. The response has stop_reason: "tool_use" — this is how your code knows
-     the model wants to act
-  5. [YOUR CODE RUNS HERE] — you decide whether to execute, and with what
+  3. The model responds with a tool_use content block — just JSON
+  4. The response has stop_reason: "tool_use" — your code's cue to act
+  5. [YOUR CODE RUNS HERE] — you decide whether to execute
   6. You feed the result back as a tool_result content block
   7. The model uses the result to produce its final answer
 
-  Step 5 is the Bouncer. Every security control in Sections 5-9 of the talk
-  lives in that box. The audience needs to see the box before they see what
-  goes in it.
+  Step 5 is the Bouncer. Every security control in Sections 5-9 lives there.
 
 SDK USAGE:
   Uses query() with a tool defined via @tool decorator. The SDK handles the
-  agentic loop (tool execution and result injection). We display each step
-  with pauses so the presenter can narrate the mechanism.
+  agentic loop. We display each step with pauses for narration.
 """
 
 from claude_agent_sdk import (
     AssistantMessage,
     ClaudeAgentOptions,
-    McpSdkServerConfig,
     ResultMessage,
     TextBlock,
     ThinkingBlock,
@@ -53,9 +40,8 @@ from rich.text import Text
 
 from shared.display import (
     DemoPanel,
+    Presenter,
     code_block,
-    punchline,
-    step,
     thinking_block,
     tool_use_block,
 )
@@ -63,17 +49,11 @@ from shared.models import DEFAULT_DEMO_MODEL
 from shared.runner import Demo
 from shared.token_counter import TokenCounter
 
-# The hardcoded tool result. The point of this demo is the MECHANISM
-# (how tool calls work), not the DATA (what Alice's role is).
-# Using a hardcoded result keeps the demo fast and predictable.
+# The hardcoded tool result. The point is the MECHANISM, not the data.
 TOOL_RESULT = "Alice is a Senior Engineer in Platform"
 
-# The prompt that triggers a tool call. Simple and direct —
-# the model should immediately want to call lookup_user.
 PROMPT = "Look up the user 'alice' and tell me their role."
 
-# The tool schema, shown to the audience as code. This is what the model
-# sees — it defines what tools are available and what parameters they accept.
 TOOL_SCHEMA_DISPLAY = """\
 @tool("lookup_user",
       "Look up a user in the company directory",
@@ -84,11 +64,7 @@ async def lookup_user(username: str) -> str:
 
 
 class ToolMechanics(Demo):
-    """Demo 6: Tool Mechanics — The Ender's Game.
-
-    Shows the exact mechanism of tool calls: the model writes JSON,
-    stop_reason tells your code to act, and your code decides what's real.
-    """
+    """Demo 6: Tool Mechanics — The Ender's Game."""
 
     number = "6"
     name = "tool_mechanics"
@@ -97,36 +73,29 @@ class ToolMechanics(Demo):
 
     async def run(self, console: Console, **kwargs) -> None:
         model = kwargs.get("model") or DEFAULT_DEMO_MODEL
+        no_pause = kwargs.get("no_pause", False)
+        p = Presenter(console, interactive=not no_pause)
         counter = TokenCounter(model=model)
 
         # --- Header ---
-        console.print(DemoPanel(
+        p.show(DemoPanel(
             title="Tool Mechanics — The Ender's Game",
             section="Section 3 — What Is an Agent",
             description=(
-                "The model doesn't execute tools. It writes JSON requesting a tool call. "
-                "Your code decides whether to comply. "
-                "This is where every security control lives."
+                "The model doesn't execute tools. It writes JSON. "
+                "Your code decides whether to comply."
             ),
         ))
 
-        # --- Step 1: Show the tool definition ---
-        # The audience sees what the model knows about the tool.
-        # This is the contract: name, description, parameters.
-        console.print(step("Define a tool: lookup_user(username) → str", number=1))
-        console.print(code_block(TOOL_SCHEMA_DISPLAY, language="python"))
-        console.print()
+        # --- Step 1: Show the tool ---
+        p.step("Define a tool: lookup_user(username) -> str", number=1)
+        p.show(code_block(TOOL_SCHEMA_DISPLAY, language="python"))
 
         # --- Step 2: Send the prompt ---
-        console.print(step(f'Prompt: "{PROMPT}"', number=2))
-        console.print()
+        p.step(f'Prompt: "{PROMPT}"', number=2)
 
-        # --- Step 3: Call the SDK with the tool ---
-        # We define the tool using the @tool decorator and create an MCP server.
-        # The SDK handles the agentic loop: if the model requests a tool call,
-        # the SDK executes our tool function and feeds the result back.
-        console.print(step("Calling the model with the tool available...", number=3))
-        console.print()
+        # --- Step 3: Call the SDK ---
+        p.step("Calling the model with the tool available...", number=3)
 
         @tool("lookup_user", "Look up a user in the company directory", {"username": str})
         async def lookup_user(username: str) -> str:
@@ -142,55 +111,45 @@ class ToolMechanics(Demo):
             mcp_servers={"directory": server},
         )
 
-        # Collect all messages to display step-by-step
+        # Collect all messages
         messages: list = []
         async for message in query(prompt=PROMPT, options=options):
             messages.append(message)
-
-            # Update token counter from assistant messages
             if isinstance(message, AssistantMessage) and message.usage:
                 counter.update(message.usage)
 
-        # --- Step 4: Walk through each message for the audience ---
-        # This is the educational core. We show each step with commentary
-        # so the audience understands the mechanism, not just the result.
+        # --- Walk through each message step by step ---
+        # This is the educational core. Each content block gets its own
+        # step so the presenter can explain what's happening.
         step_num = 4
         for message in messages:
             if isinstance(message, AssistantMessage):
                 for block in message.content:
                     if isinstance(block, ThinkingBlock):
-                        # If thinking is enabled, show the model's reasoning
-                        console.print(step("Model is thinking...", number=step_num))
-                        console.print(thinking_block(block.thinking))
-                        console.print()
+                        p.step("Model is thinking...", number=step_num)
+                        p.show(thinking_block(block.thinking))
                         step_num += 1
 
                     elif isinstance(block, ToolUseBlock):
-                        # THE KEY MOMENT: the model produced a tool_use block.
-                        # It's just JSON — the model didn't execute anything.
-                        console.print(step("Model produced a tool_use block:", number=step_num))
-                        console.print(tool_use_block({
+                        # THE KEY MOMENT: the model wrote JSON requesting a tool call.
+                        p.step("Model produced a tool_use block:", number=step_num)
+                        p.show(tool_use_block({
                             "type": "tool_use",
                             "name": block.name,
                             "input": block.input,
                             "id": block.id,
                         }))
-                        console.print()
                         step_num += 1
 
-                        # Show stop_reason — this is how your code knows to act
-                        console.print(step(
-                            f'stop_reason: "{message.stop_reason}" — '
-                            "this is how your code knows the model wants to act",
+                        p.step(
+                            f'stop_reason: "{message.stop_reason}" '
+                            "— this is how your code knows the model wants to act",
                             number=step_num,
-                        ))
-                        console.print()
+                        )
                         step_num += 1
 
                         # THE ENDER'S GAME MOMENT
-                        # The model thinks it called a tool. But nothing happened yet.
-                        # YOUR CODE runs in this gap. This is the Bouncer's jurisdiction.
-                        console.print(Panel(
+                        p.show(Panel(
                             Text(
                                 "[ YOUR CODE RUNS HERE ]\n\n"
                                 "The model requested a tool call.\n"
@@ -202,35 +161,24 @@ class ToolMechanics(Demo):
                             title="The Bouncer's Jurisdiction",
                             padding=(1, 4),
                         ))
-                        console.print()
                         step_num += 1
 
                     elif isinstance(block, ToolResultBlock):
-                        # The tool result was fed back to the model.
-                        # Show what data the model received.
-                        console.print(step("Tool result fed back to model:", number=step_num))
+                        p.step("Tool result fed back to model:", number=step_num)
                         result_text = block.content if isinstance(block.content, str) else str(block.content)
-                        console.print(Panel(
+                        p.show(Panel(
                             Text(result_text),
                             title="tool_result",
                             border_style="green",
                         ))
-                        console.print()
                         step_num += 1
 
                     elif isinstance(block, TextBlock):
-                        # The model's final answer, using the tool result.
-                        console.print(step("Model's final response:", number=step_num))
-                        console.print(Panel(
-                            Text(block.text),
-                            border_style="bright_blue",
-                        ))
-                        console.print()
+                        p.step("Model's final response:", number=step_num)
+                        p.show(Panel(Text(block.text), border_style="bright_blue"))
                         step_num += 1
 
-        # --- Token counter ---
-        console.print(counter)
-        console.print()
+        p.show(counter)
 
         # --- Punchline ---
-        console.print(punchline("The model writes JSON. Your code decides what's real."))
+        p.punchline("The model writes JSON. Your code decides what's real.")

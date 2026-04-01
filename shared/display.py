@@ -22,9 +22,86 @@ DESIGN DECISIONS:
 import json
 
 from rich.columns import Columns
+from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.text import Text
+
+
+# ---------------------------------------------------------------------------
+# Presenter — interactive step controller for demos
+# ---------------------------------------------------------------------------
+
+class Presenter:
+    """Controls pacing and output for a demo.
+
+    Every demo receives a Presenter instead of a raw Console. The Presenter
+    provides two modes:
+
+    INTERACTIVE (default, presenter at the podium):
+      presenter.step("Reading the file", number=1)
+      → Prints "[1] Reading the file..."
+      → Waits for Enter before continuing
+      → The presenter narrates while the audience reads
+
+    SPEEDRUN (--no-pause flag, for recording or rehearsal):
+      Same output, but no pauses. Steps print and continue immediately.
+
+    WHY THIS EXISTS:
+      The original demos called console.print(step(...)) and everything
+      blasted through at once. A conference demo needs pacing — the
+      presenter controls the flow, not the code. Each step is a moment
+      for the audience to absorb what they're seeing.
+
+    USAGE IN DEMOS:
+      async def run(self, console, **kwargs):
+          p = Presenter(console, interactive=not kwargs.get("no_pause"))
+          p.step("Reading the file", number=1)
+          p.show(code_block(file_content))
+          p.step("Calling the model", number=2)
+          # ... API call ...
+          p.punchline("Data and code are the same thing.")
+    """
+
+    def __init__(self, console: Console, interactive: bool = True) -> None:
+        self.console = console
+        self.interactive = interactive
+
+    def step(self, text: str, number: int = 1) -> None:
+        """Print a numbered step and optionally wait for Enter.
+
+        In interactive mode, this is where the presenter breathes.
+        They read the step aloud, explain what's about to happen,
+        then press Enter to continue.
+        """
+        self.console.print()
+        renderable = _step_renderable(text, number)
+        self.console.print(renderable)
+        if self.interactive:
+            self.console.input("[dim]  ↵ Enter to continue...[/dim]")
+
+    def show(self, renderable: object) -> None:
+        """Print any Rich renderable (panels, text, code blocks, etc.)."""
+        self.console.print(renderable)
+
+    def punchline(self, text: str) -> None:
+        """Show the demo's key takeaway — bold yellow, bordered.
+
+        Always pauses in interactive mode, even if the previous step
+        didn't. The punchline is the moment the audience remembers.
+        """
+        self.console.print()
+        self.console.print(punchline(text))
+        if self.interactive:
+            self.console.input("[dim]  ↵ Enter to continue...[/dim]")
+
+    def narrate(self, text: str) -> None:
+        """Print explanatory text without a step number.
+
+        Used for context between steps — not a step itself, just
+        commentary the presenter reads aloud.
+        """
+        self.console.print(Text(text, style="dim"))
 
 
 # ---------------------------------------------------------------------------
@@ -114,23 +191,26 @@ class SideBySide:
 # step() — numbered presenter-paced step
 # ---------------------------------------------------------------------------
 
-def step(text: str, number: int = 1) -> Text:
-    """A numbered step for presenter narration.
+def _step_renderable(text: str, number: int = 1) -> Text:
+    """Create the visual element for a numbered step.
 
     Returns a styled Text like: "[1] Making the API call..."
-
-    Steps control pacing — the presenter narrates while the code waits.
-    Each step is displayed, then the demo pauses (configurable delay)
-    before proceeding. This prevents the audience from being overwhelmed
-    by everything happening at once.
-
-    The actual pause happens in the demo runner, not here — this function
-    only creates the visual element.
+    This is the visual-only part. Presenter.step() adds the pause.
     """
     result = Text()
     result.append(f"[{number}] ", style="bold cyan")
     result.append(text)
     return result
+
+
+def step(text: str, number: int = 1) -> Text:
+    """Public alias for the step renderable.
+
+    Use Presenter.step() in demos for interactive pacing.
+    Use this function directly only when you need the renderable
+    without any pause behavior (e.g., in tests or custom layouts).
+    """
+    return _step_renderable(text, number)
 
 
 # ---------------------------------------------------------------------------
