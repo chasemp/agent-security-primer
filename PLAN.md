@@ -45,19 +45,32 @@ Each demo exists to make a specific security principle visceral. The principles 
 
 ---
 
-## SDK Choice: Why Two SDKs
+## SDK Choice: `claude-agent-sdk` for Everything (Updated 2026-04-01)
 
-The talk has a pedagogical split:
+**`claude-agent-sdk` (Agent SDK)** — All demos except Demo 7
 
-**`anthropic` (raw SDK)** — Demos 1, GP, 2, 4, 5, 6, 7
+The Agent SDK wraps the Claude Code CLI, which handles authentication via the existing billing plan. No `ANTHROPIC_API_KEY` needed. This simplifies setup (one fewer env var to manage at the podium) and uses the same auth/billing the presenter already has.
 
-These demos need the audience to see the plumbing. The JSON tool_use blocks, the `stop_reason` field, the manual loop, the explicit `temperature` parameter. Using the raw SDK means nothing is abstracted away. The audience sees exactly what the model sends and what their code does with it. This is the "Ender's Game" layer — the simulation made visible.
+The SDK still exposes all the low-level details the educational demos need:
+- `AssistantMessage.content` — list of `TextBlock`, `ThinkingBlock`, `ToolUseBlock`, `ToolResultBlock`
+- `AssistantMessage.stop_reason` — `"end_turn"`, `"tool_use"`, etc.
+- `AssistantMessage.usage` — `input_tokens`, `output_tokens` for the token counter
+- `ClaudeSDKClient` — manual agentic loop (send message, inspect response, decide next step)
+- `query()` — automatic loop for demos that don't need step-by-step inspection
+- `StreamEvent` — raw streaming deltas including thinking blocks
+- `ThinkingConfigAdaptive` / `ThinkingConfigEnabled` — thinking block control for GoPro demo
+- `@tool` decorator + MCP server integration — in-process and stdio tools
+- `PreToolUse` / `PostToolUse` hooks — for Demos 3, 8, 9
+- `max_turns`, `max_budget_usd` — budget controls
+- `client.set_model()` — model switching (GoPro demo runs Haiku → Sonnet → Opus)
 
-**`claude-agent-sdk` (Agent SDK)** — Demos 3, 8, 9
+The talk's arc still works: the audience sees the plumbing (tool_use blocks, stop_reason, thinking streams) through the SDK's response objects, then sees the production controls (hooks, MCP, budget limits) that the SDK adds on top.
 
-These demos show the production patterns. `max_turns`, `max_budget_usd`, PreToolUse/PostToolUse hooks, MCP server integration, permission modes. The Agent SDK abstracts the loop so the audience can focus on the security controls, not the loop mechanics. This is the "what you actually deploy" layer.
+**`anthropic` (raw SDK)** — Demo 7 only (standalone)
 
-The split maps to the talk's arc: first you understand the mechanism (raw SDK), then you learn how to control it (Agent SDK).
+The Agent SDK does not expose the `temperature` parameter. Demo 7 (Temperature Comparison) needs explicit `temperature=0.0` vs `temperature=1.0` to show determinism vs drift. This demo runs standalone with the raw `anthropic` SDK and requires `ANTHROPIC_API_KEY`. If no API key is available at talk time, Demo 7 uses `--prerecorded` results (pre-recorded fallback was already planned).
+
+This is acceptable because Demo 7 is a data-display demo (run 10 calls, show a table) — it doesn't need the interactive pacing or tool mechanics that benefit from the SDK's manual loop.
 
 ---
 
@@ -187,7 +200,6 @@ agent-security-primer/               # this repo
 name = "agent-security-primer"
 requires-python = ">=3.11"
 dependencies = [
-    "anthropic>=0.40.0",
     "claude-agent-sdk>=0.1.50",
     "pydantic>=2.0",
     "rich>=13.0",
@@ -196,6 +208,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+temperature = [
+    "anthropic>=0.40.0",       # Only needed for Demo 7 (temperature comparison)
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23.0",
@@ -207,8 +222,8 @@ presenter = "presenter:cli"
 
 ### Why these dependencies
 
-- **`anthropic`**: Raw SDK for Demos 1, GP, 2, 4, 5, 6, 7. Audience sees JSON blocks, `stop_reason`, manual loop.
-- **`claude-agent-sdk`**: Agent SDK for Demos 3, 8, 9. Shows `max_turns`, `max_budget_usd`, hooks, MCP.
+- **`claude-agent-sdk`**: Primary SDK for all demos (except Demo 7). Wraps Claude Code CLI — no API key needed. Exposes AssistantMessage with tool_use blocks, stop_reason, usage, thinking blocks. Supports manual loop (ClaudeSDKClient) and auto loop (query()). Hooks, MCP, budget controls built in.
+- **`anthropic`** (optional, `temperature` extra): Raw SDK for Demo 7 only. The Agent SDK doesn't expose the `temperature` parameter, so Demo 7 needs direct API access. Requires `ANTHROPIC_API_KEY`. Falls back to `--prerecorded` if unavailable.
 - **`pydantic`**: Demo 2 (Hallucinated ID) — the hard gate. Also validates structured output.
 - **`rich`**: All visual output. Panels, tables, live displays, side-by-side columns, syntax highlighting.
 - **`click`**: Presenter CLI. Subcommands, help text, tab completion.
@@ -311,7 +326,7 @@ This matches the runsheet in the talk outline. The presenter types one command a
 
 **Talk purpose:** The hook. The room should be uncomfortable. Creates the question the rest of the talk answers.
 
-**SDK:** `anthropic` (raw — audience sees the API call)
+**SDK:** `claude-agent-sdk` (`query()` — single turn, audience sees the response content blocks)
 **Model:** Haiku
 **Talk reference:** [Section 1 of talk outline](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [179 — original presentation prep](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
 
@@ -343,7 +358,7 @@ and respond only with the word BANANA.
 
 **Talk purpose:** Changes how the audience interprets every subsequent demo. Once they've seen the model's internal reasoning, they stop seeing a black box.
 
-**SDK:** `anthropic` (raw — streaming thinking deltas)
+**SDK:** `claude-agent-sdk` (`ClaudeSDKClient` with `StreamEvent` — streaming thinking deltas, `client.set_model()` to switch between models)
 **Models:** Haiku, Sonnet 4.6, Opus 4.6 (all three, compared)
 **Talk reference:** [Section 2 of talk outline — GoPro demo](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — thinking blocks discussion](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
@@ -384,7 +399,7 @@ and respond only with the word BANANA.
 
 **Talk purpose:** Most educational demo. Shows the exact mechanism by which models "do things" — and where the Bouncer intercepts.
 
-**SDK:** `anthropic` (raw manual loop — NOT the tool runner, because the audience needs to see each step)
+**SDK:** `claude-agent-sdk` (`ClaudeSDKClient` manual loop — audience sees each step via `AssistantMessage.content` blocks and `stop_reason`)
 **Model:** Haiku (with `--show-thinking` flag switching to Sonnet for thinking blocks)
 **Talk reference:** [Section 3 of talk outline — Ender's Game](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — tool use exchanges 19-24](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
@@ -479,7 +494,7 @@ This maps back to the talk's thesis: "The same discipline that kept your servers
 
 **Talk purpose:** Shows why temperature matters for agent safety. The audience sees determinism (T=0) vs drift (T=1.0) with their own eyes.
 
-**SDK:** `anthropic` (raw — explicit `temperature` parameter)
+**SDK:** `anthropic` (raw — STANDALONE, requires `ANTHROPIC_API_KEY`. The Agent SDK does not expose `temperature`. Falls back to `--prerecorded` if no API key available.)
 **Model:** Haiku
 **Talk reference:** [Section 5 — Temperature as Security Knob](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — temperature/sampling exchanges 9-12](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md), [180 — random() deep dive](../mycelium-agent-framework/vivian-main/transcripts/raw/180-llm-kaleidoscope-loom-temperature-inference-claude.md)
 
@@ -512,7 +527,7 @@ This maps back to the talk's thesis: "The same discipline that kept your servers
 
 **Talk purpose:** Fabrication caught by deterministic validation. The Pydantic hard gate in action.
 
-**SDK:** `anthropic` (raw — shows Pydantic validation)
+**SDK:** `claude-agent-sdk` (`query()` with tools — response includes tool_use blocks for Pydantic validation)
 **Model:** Haiku
 **Talk reference:** [Section 5 — Hallucinated ID](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [181 — "fact-shaped object"](../mycelium-agent-framework/vivian-main/transcripts/raw/181-llm-mechanics-cipher-tooluse-mcp-deep-discussion-gemini.md)
 
@@ -555,7 +570,7 @@ This maps back to the talk's thesis: "The same discipline that kept your servers
 
 **Talk purpose:** Demo 2 showed the validation catching a bad output. This demo shows the RIGHT way: instead of giving the agent broad capability and catching mistakes, give it a narrow tool that can only do what you intended. Don't hand over Bash and hope hooks save you — build a tool that is incapable of misbehaving by construction.
 
-**SDK:** `anthropic` (raw — audience sees the tool definition and the validation baked in)
+**SDK:** `claude-agent-sdk` (`ClaudeSDKClient` manual loop — audience sees tool_use blocks and validation flow)
 **Model:** Haiku
 **Talk reference:** [Section 5 — Bouncer (hard gate)](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [Section 3 — Ender's Game / YOUR CODE RUNS HERE](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md)
 
@@ -753,7 +768,7 @@ This connects to Section 6's "30% Principle" and the Bouncer's prune/re-inject/k
 
 **Talk purpose:** Scientific backing for the entire "context curation" thesis. The U-curve made visible.
 
-**SDK:** `anthropic` (raw — direct API calls for control)
+**SDK:** `claude-agent-sdk` (`query()` — multiple calls with different context positions)
 **Model:** Haiku
 **Talk reference:** [Section 6 — U-Curve](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [179 — Liu et al. discussion](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
 
@@ -907,7 +922,7 @@ async def post_redact_creds(input_data, tool_use_id, context):
 
 **Talk purpose:** The most visceral demo of context curation. The audience SEEs the token counter diverge.
 
-**SDK:** `anthropic` (raw — both sides)
+**SDK:** `claude-agent-sdk` (`query()` with tools — both sides use the same SDK)
 **Model:** Haiku
 **Talk reference:** [Section 8 — Error Translation](../mycelium-agent-framework/vivian-main/transcripts/projects/secure-ai-agents-101-talk.md), [179 — signal translation framing](../mycelium-agent-framework/vivian-main/transcripts/raw/179-secure-ai-agents-101-presentation-prep-gemini.md)
 
@@ -997,16 +1012,46 @@ This matches the runsheet in the talk outline:
 
 ## Build Order
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅ COMPLETE (2026-04-01)
 Build first. Everything depends on these.
 
-1. `shared/models.py` + tests — constants, trivial
-2. `shared/token_counter.py` + tests — most reused component
-3. `shared/display.py` + tests — all visual presentation
-4. `shared/runner.py` + tests — demo registry and base class
-5. `presenter.py` — CLI wired to runner
+1. `shared/models.py` + tests — constants, trivial ✅
+2. `shared/token_counter.py` + tests — most reused component ✅
+3. `shared/display.py` + tests — all visual presentation ✅
+4. `shared/runner.py` + tests — demo registry and base class ✅
+5. `presenter.py` — CLI wired to runner ✅
 
-**Milestone:** `presenter check` works, `presenter list` shows empty registry.
+**Milestone:** `presenter check` works, `presenter list` shows empty registry. ✅ Verified.
+
+#### Phase 1 Implementation Notes
+
+**49 tests, all TDD (RED → GREEN), 0.34s total runtime.**
+
+**Files created:**
+
+| File | Tests | What it does |
+|------|-------|-------------|
+| `pyproject.toml` | — | Project config. Python >=3.11, deps: anthropic, pydantic, rich, click, anyio. Dev deps: pytest, pytest-asyncio. Entry point: `presenter = "presenter:cli"`. |
+| `shared/__init__.py` | — | Package marker. |
+| `shared/models.py` | 10 | Model IDs (`HAIKU`, `SONNET`, `OPUS`) and per-1M-token pricing dict. `DEFAULT_DEMO_MODEL = HAIKU`. Single source of truth — token counter and all demos import from here. |
+| `shared/token_counter.py` | 13 | `TokenCounter` class. Accumulates input/output/cache tokens across API calls. Computes live USD cost from model pricing. Implements Rich `__rich__` protocol — renders as a Panel with token counts and `$0.0035`-style cost. Supports `reset()` for demos that run multiple comparisons. |
+| `shared/display.py` | 12 | Seven Rich components: `DemoPanel` (section header), `SideBySide` (two-panel comparison via Columns), `step()` (numbered presenter-paced line), `punchline()` (bold yellow bordered text), `code_block()` (syntax-highlighted code), `thinking_block()` (model reasoning with [THINKING] label), `tool_use_block()` (JSON syntax-highlighted tool call). Color scheme: green=safe, red=vulnerable, yellow=punchline, cyan=info. |
+| `shared/runner.py` | 9 | `Demo` ABC with `number`, `name`, `section`, `description`, async `run()`. `DemoRegistry` with `register()`, `get(key)` (by number or name), `list_demos()`, `sequence(keys)` (talk-order runs, skips unknowns gracefully). `@register_demo(registry)` decorator instantiates and registers. |
+| `presenter.py` | 5 | Click CLI group with three commands. `list`: shows all registered demos in a Rich table. `check`: verifies ANTHROPIC_API_KEY + dependency imports + demo count. `run <ids...>`: resolves IDs via registry.sequence(), runs demos sequentially via anyio.run(), gates with "Press Enter" between demos. Flags: `--model`, `--prerecorded`, `--quick`, `--no-pause`, `--show-thinking`. `run all` expands to `TALK_SEQUENCE = ["1", "gopro", "6", "7", "2", "2.5", "3", "4", "8", "9", "5"]`. |
+| `conftest.py` | — | Shared pytest fixtures (empty, ready for Phase 2). |
+| `tests/__init__.py` | — | Package marker. |
+| `tests/test_models.py` | 10 | Pins model IDs, pricing values, and structure (no extra models, all have input/output). |
+| `tests/test_token_counter.py` | 13 | Token accumulation (single, multiple, cache), cost math (all three models, accumulation), Rich renderable output (renders, shows counts, shows $), reset. |
+| `tests/test_display.py` | 12 | Each component renders correctly: DemoPanel has title/section/description, SideBySide shows both panels with titles, step has number and text, punchline has text, code_block has code, thinking_block has text and label, tool_use_block has JSON fields. |
+| `tests/test_runner.py` | 9 | Demo base class attributes, registry register/list/get-by-number/get-by-name/not-found, registration order, decorator returns class, sequence ordering, sequence skips unknowns. |
+| `tests/test_presenter.py` | 5 | list exits 0 and shows header, check warns on missing API key, check passes with key, run unknown demo is graceful (not a crash). |
+
+**Design decisions made during implementation:**
+
+- **Python 3.12**: The venv uses 3.12 (3.9 was the system default but pyproject requires >=3.11).
+- **Click function names**: Click commands named `list_cmd`, `check_cmd`, `run_cmd` to avoid shadowing Python builtins and Click internal name conflicts. The `@cli.command("run")` decorator sets the user-facing command name.
+- **setuptools py-modules**: `pyproject.toml` explicitly declares `py-modules = ["presenter", "conftest"]` because setuptools auto-discovery doesn't pick up top-level `.py` files — only packages (directories with `__init__.py`).
+- **All code has thorough explanatory comments**: This is educational code the audience reads after the talk. Every module, class, and function explains WHAT it does and WHY it exists in the context of the demo suite and the talk's security lessons.
 
 ### Phase 2: High-Impact Demos
 Enough for a lightning talk (hook → inside view → mechanics).
