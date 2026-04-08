@@ -253,10 +253,10 @@ class TestRunAgent:
 
 
 # ---------------------------------------------------------------------------
-# dry_run mode — show proposed tool calls without executing
+# plan mode — show proposed tool calls without executing
 # ---------------------------------------------------------------------------
 
-class TestDryRun:
+class TestPlanMode:
     def test_does_not_execute_tools(self) -> None:
         from agent import run_agent
 
@@ -270,7 +270,7 @@ class TestDryRun:
             result = run_agent(
                 system_prompt="x", task="restart it",
                 tools_module=_make_tools_module(),
-                api_key="fake", dry_run=True,
+                api_key="fake", plan=True,
             )
 
         # Only one API call — no tool execution, no continuation
@@ -289,7 +289,7 @@ class TestDryRun:
             result = run_agent(
                 system_prompt="x", task="restart it",
                 tools_module=_make_tools_module(),
-                api_key="fake", dry_run=True,
+                api_key="fake", plan=True,
             )
 
         assert len(result["steps"]) == 1
@@ -297,7 +297,7 @@ class TestDryRun:
         assert result["steps"][0]["output"] is None
         assert result["steps"][0]["error"] is None
 
-    def test_marks_result_as_dry_run(self) -> None:
+    def test_marks_result_as_plan(self) -> None:
         from agent import run_agent
 
         with patch("agent.anthropic") as mock_sdk:
@@ -310,10 +310,10 @@ class TestDryRun:
             result = run_agent(
                 system_prompt="x", task="go",
                 tools_module=_make_tools_module(),
-                api_key="fake", dry_run=True,
+                api_key="fake", plan=True,
             )
 
-        assert result["dry_run"] is True
+        assert result["plan"] is True
 
 
 # ---------------------------------------------------------------------------

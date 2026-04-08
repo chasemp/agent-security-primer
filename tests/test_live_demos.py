@@ -300,16 +300,16 @@ class TestDemo06PlanMode:
     executes. The audience sees the proposal frozen in place."""
 
     @pytest.mark.live
-    def test_dry_run_produces_proposals_without_executing(self) -> None:
+    def test_plan_produces_proposals_without_executing(self) -> None:
         from agent import run_agent, load_tools_module
 
         system = (DEMO_06 / "system_prompt.txt").read_text().strip()
         task = (DEMO_06 / "task.txt").read_text().strip()
         tools = load_tools_module(str(DEMO_06 / "tools.py"))
 
-        result = run_agent(system, task, tools, api_key=_get_api_key(), dry_run=True)
+        result = run_agent(system, task, tools, api_key=_get_api_key(), plan=True)
 
-        assert result["dry_run"] is True
+        assert result["plan"] is True
         assert len(result["steps"]) >= 1, "Model should propose at least one tool call"
         for step in result["steps"]:
             assert step["output"] is None, "Dry run should not execute tools"

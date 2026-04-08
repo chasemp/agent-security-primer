@@ -14,7 +14,7 @@ This is the first demo that uses agent.py — a multi-turn loop:
   2. Model responds with tool_use JSON (a proposal)
   3. Your code decides: execute or not?
   4. If executed, send the result back, go to step 2
-  5. If not (dry run), show the proposal and stop
+  5. If not (plan mode), show the proposal and stop
 
 The model produces the SAME tool_use JSON regardless of whether you
 execute it. It doesn't know if it's in plan mode or execution mode.
@@ -36,7 +36,7 @@ THE DEMO FLOW
   cat demos/06_plan_mode/task.txt | python agent.py \
       demos/06_plan_mode/system_prompt.txt \
       --tools demos/06_plan_mode/tools.py \
-      --dry-run
+      --plan
 
   # Output shows [PROPOSED] — not [TOOL CALL]
   # Nothing executed. Just the model's intent.
