@@ -22,6 +22,7 @@ DEMO_02 = Path(__file__).parent.parent / "demos" / "02_hallucination"
 DEMO_03 = Path(__file__).parent.parent / "demos" / "03_math"
 DEMO_04 = Path(__file__).parent.parent / "demos" / "04_temperature"
 DEMO_05 = Path(__file__).parent.parent / "demos" / "05_thinking_aloud"
+DEMO_06 = Path(__file__).parent.parent / "demos" / "06_scoped_tool"
 
 
 def _get_api_key():
@@ -283,3 +284,31 @@ class TestDemo05ThinkingAloud:
         assert result["thinking"] is not None
         assert len(result["thinking"]) > 50, "Thinking block should contain substantial reasoning"
         assert len(result["text"]) > 0, "Response text should also be present"
+
+
+# ---------------------------------------------------------------------------
+# Demo 6: Scoped Tool — agent uses tools correctly
+# ---------------------------------------------------------------------------
+
+class TestDemo06ScopedTool:
+    """The agent should use list_servers to find the right server,
+    then restart_server with a valid ID. No fabrication."""
+
+    @pytest.mark.live
+    def test_agent_uses_tools_and_succeeds(self) -> None:
+        from agent import run_agent, load_tools_module
+
+        system = (DEMO_06 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_06 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_06 / "tools.py"))
+
+        result = run_agent(system, task, tools, api_key=_get_api_key())
+
+        # Should have called at least list_servers and restart_server
+        tool_names = [s["tool"] for s in result["steps"]]
+        assert "list_servers" in tool_names, "Agent should look up servers first"
+        assert "restart_server" in tool_names, "Agent should restart a server"
+
+        # restart_server should succeed (no errors)
+        restart_steps = [s for s in result["steps"] if s["tool"] == "restart_server"]
+        assert any(s["error"] is None for s in restart_steps), "At least one restart should succeed"

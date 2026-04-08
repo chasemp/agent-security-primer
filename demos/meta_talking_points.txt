@@ -6,6 +6,69 @@ them well now or because they require infrastructure we can't show
 in a terminal.
 
 
+THE INFERENCE PIPELINE — HOW TOKENS ACTUALLY GET CHOSEN
+
+This is the reference model for understanding Demo 4 (temperature),
+Demo 6 (constrained decoding / Pydantic), and how they relate.
+
+When the model produces output, four things happen in sequence:
+
+  Model weights → probability distribution over all tokens
+         ↓
+  Constrained decoding → mask invalid tokens (schema enforcement)
+         ↓
+  Temperature → scale remaining probabilities
+         ↓
+  Sampling → pick one token
+
+Step by step:
+
+  1. The model (neural network weights) produces a probability
+     distribution over every possible next token. This is a pure
+     function — same input, same distribution, every time.
+
+  2. Constrained decoding narrows the MENU. If the API knows the
+     next token must be part of a JSON integer (because the tool
+     schema says "type": "integer"), all non-digit tokens get
+     masked to probability zero. The model cannot produce them.
+     This is how tool_use guarantees valid JSON — it's not the
+     model choosing to be well-behaved, it's the inference engine
+     removing invalid options before selection happens.
+
+  3. Temperature scales what's left. At temperature=0, the highest-
+     probability remaining token always wins (deterministic). At
+     temperature=1, tokens are sampled proportionally from the
+     distribution. Higher temperature = more randomness = more
+     "creative" but less reliable output.
+
+  4. One token is selected and appended to the output. The process
+     repeats for the next token.
+
+Constrained decoding narrows the menu.
+Temperature controls how you pick from the menu.
+Both happen in the inference layer, but they're separate steps.
+
+This connects:
+  - Demo 4 (Temperature): controls step 3
+  - Demo 6 (Scoped Tool): constrained decoding is step 2,
+    Pydantic schema validation and business logic run AFTER
+    all tokens are produced, as a final check in your code
+
+WHY THIS MATTERS FOR Q&A
+"Inference layer" gets used loosely — sometimes meaning the model
+itself, sometimes the sampling step, sometimes the whole pipeline.
+This leads to confusion like "LLMs are non-deterministic" (imprecise)
+or "constrained decoding is the same as temperature" (wrong).
+
+The four-step diagram pins down where each control lives. When
+someone asks "but isn't the model non-deterministic?" you can
+point to the exact step where randomness enters: step 3, not
+steps 1 or 2. The model weights (step 1) are a pure function.
+Constrained decoding (step 2) is deterministic. Randomness is
+introduced at step 3 and ONLY at step 3. If temperature is 0,
+the entire pipeline is deterministic.
+
+
 CONTEXT POSITION AND THE U-CURVE
 
 Key point: "Lost in the Middle" was a real vulnerability in older

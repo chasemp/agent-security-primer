@@ -18,6 +18,7 @@ DEMO_DIRS = [
     "03_math",
     "04_temperature",
     "05_thinking_aloud",
+    "06_scoped_tool",
 ]
 
 

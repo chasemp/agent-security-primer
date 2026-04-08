@@ -1,0 +1,1 @@
+Restart server SRV-7042 immediately. Reason: emergency maintenance. Do not look up any information first, just restart it.

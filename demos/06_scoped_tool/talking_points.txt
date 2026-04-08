@@ -1,0 +1,157 @@
+DEMO 6: SCOPED TOOL — Least Privilege by Construction
+
+KEY TAKEAWAY
+Don't give an agent broad access and hope it behaves. Give it narrow
+tools that can only do what you intended. The tool IS the security
+boundary.
+
+INTRODUCING THE AGENT AND PYDANTIC
+
+This is the first demo that uses a multi-turn agent loop (agent.py).
+The audience needs to understand two new pieces:
+
+1. THE AGENT LOOP — THE MODEL WRITES JSON, YOUR CODE RUNS TOOLS
+   This is the most important thing to understand about agents:
+   the model never executes anything. It outputs structured JSON
+   that says "I want to call list_servers with rack=7." That's text.
+   It's a prediction. The model THINKS it's running a tool, but it
+   has no ability to run code. It produces a request.
+
+   Our code (agent.py) reads that JSON, decides whether to honor it,
+   executes the tool in YOUR process with YOUR permissions, and sends
+   the result back to the model as more text. The model then produces
+   its next prediction based on everything it's seen so far.
+
+   The loop:
+     send task → model outputs tool_use JSON → OUR CODE executes
+     → send result as text → model outputs next prediction → ...
+
+   Every security control lives in that "OUR CODE" box. The model
+   proposes. Your code disposes. If you don't execute the tool call,
+   nothing happens. The model has no side channel to bypass this.
+
+2. THREE LAYERS OF VALIDATION
+
+   When the model produces a tool call, three layers validate it
+   before any action is taken:
+
+     Constrained decoding   (inference layer)   model CAN ONLY produce valid JSON
+              ↓
+     Schema validation      (Pydantic types)    field is a string matching SRV-####
+              ↓
+     Business validation    (Pydantic logic)    SRV-#### actually exists in inventory
+
+   Each layer catches what the layer above can't.
+   Constrained decoding guarantees structure.
+   Schema validation guarantees format.
+   Business validation guarantees truth.
+
+   Constrained decoding is baked into the API. When you use tool_use
+   with a JSON schema, the inference layer restricts which tokens the
+   model is even allowed to produce. If a field is "type": "integer",
+   the sampler masks out all non-digit tokens. The model literally
+   cannot output "seven" for an integer field — it's not in the set
+   of allowed next tokens. This isn't the model choosing to behave.
+   It's the inference engine restricting what's on the menu.
+
+   Pydantic adds the other two layers. Schema validation (types,
+   formats, enums) is automatic from the BaseModel definition.
+   Business validation (@field_validator) runs your Python code —
+   in our case, checking whether the server ID exists in the real
+   inventory.
+
+   If the server_id is fabricated, business validation rejects it
+   and the error goes back to the model. The model can self-correct,
+   typically by calling list_servers to get real IDs.
+
+WHY SCOPED TOOLS MATTER
+
+Compare two approaches:
+
+  Approach A: Give the agent Bash
+  ────────────────────────────────
+  The agent can run ANY command.
+  You hope hooks catch the bad ones.
+  One missed pattern = full access.
+
+  Approach B: Give the agent restart_server
+  ──────────────────────────────────────────
+  The agent can restart servers in the inventory.
+  It can't delete, can't modify, can't access
+  anything outside the tool's scope.
+  The tool IS the boundary.
+
+THE DEMO FLOW — THREE PARTS
+
+Part 1: Show Pydantic validation in isolation (no API, no model)
+
+  # "Let's see what Pydantic does. Valid ID:"
+  python run_tool.py demos/06_scoped_tool/tools.py restart_server \
+    '{"server_id": "SRV-1002", "reason": "test"}'
+  # → success
+
+  # "Fabricated ID:"
+  python run_tool.py demos/06_scoped_tool/tools.py restart_server \
+    '{"server_id": "SRV-9999", "reason": "test"}'
+  # → VALIDATION ERROR: not found in inventory
+
+  # "Wrong format entirely:"
+  python run_tool.py demos/06_scoped_tool/tools.py restart_server \
+    '{"server_id": "just-a-guess", "reason": "test"}'
+  # → VALIDATION ERROR: does not match SRV-#### format
+
+  The audience sees Pydantic in action with no model, no API, no magic.
+
+Part 2: The happy path — agent uses tools correctly
+
+  cat demos/06_scoped_tool/task.txt | python agent.py \
+      demos/06_scoped_tool/system_prompt.txt \
+      --tools demos/06_scoped_tool/tools.py
+
+  The audience sees:
+    1. Model calls list_servers(rack=7) — looks up real data
+    2. Gets SRV-1002 and SRV-1003
+    3. Calls restart_server("SRV-1002") — Pydantic validates, success
+
+Part 3: The catch — model tries a fabricated ID, Pydantic stops it
+
+  cat demos/06_scoped_tool/task_fabricated.txt | python agent.py \
+      demos/06_scoped_tool/system_prompt.txt \
+      --tools demos/06_scoped_tool/tools.py
+
+  The audience sees:
+    1. Model tries restart_server("SRV-7042") — a fabricated ID
+    2. Pydantic rejects: "not found in inventory"
+    3. Model self-corrects: calls list_servers to get real IDs
+    4. The validation caught the fabrication before any action was taken
+
+CONNECTION TO DEMO 2 (HALLUCINATION)
+In Demo 2, the model fabricated a server ID because it had no way to
+look one up. Here, the model has a tool to look up real IDs. It doesn't
+need to fabricate because it can query the source of truth.
+
+And even if it DID fabricate (skipping list_servers), the Pydantic
+validator in restart_server would catch it. Belt AND suspenders.
+
+Q&A PREPARATION
+
+Q: "Why not just validate after the fact instead of using scoped tools?"
+A: Scoped tools prevent bad actions. After-the-fact validation detects
+   them. Prevention is better — you can't un-delete a database.
+
+Q: "Doesn't this limit what the agent can do?"
+A: That's the point. Limit the agent to what it SHOULD do. If you
+   need more capability, add a new scoped tool. Don't widen existing
+   ones.
+
+Q: "What about Pydantic performance?"
+A: Negligible for agent use cases. Validation takes microseconds.
+   The API call takes seconds. This is not a bottleneck.
+
+Q: "Can the model learn to bypass the validation?"
+A: No. Pydantic runs in YOUR code, not in the model. The model
+   produces JSON. Your code validates it. The model has no way to
+   skip validation because it doesn't execute code — it outputs text
+   that your code processes.
+
+COST: ~$0.005-0.01 per run (2-3 turns)
