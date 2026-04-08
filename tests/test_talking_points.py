@@ -27,6 +27,8 @@ DEMO_DIRS = [
     "12_error_translation",
     "13_credential_exposure",
     "14_credential_isolation",
+    "15_indirect_injection",
+    "16_conditional_auth",
 ]
 
 

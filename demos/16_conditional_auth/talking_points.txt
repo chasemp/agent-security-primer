@@ -1,0 +1,94 @@
+DEMO 16: CONDITIONAL AUTHORIZATION — model_validator
+
+KEY TAKEAWAY
+@field_validator checks one field at a time. @model_validator checks
+relationships BETWEEN fields. This lets you encode authorization
+rules in the schema: "delete requires supervisor approval." The
+model can't talk its way past Python.
+
+TWO LEVELS OF PYDANTIC VALIDATION
+
+Demo 10 showed @field_validator:
+  @field_validator("server_id")
+  def must_exist(cls, v):
+      if v not in INVENTORY: raise ValueError(...)
+
+This checks: "Is this ONE field valid?"
+
+This demo shows @model_validator:
+  @model_validator(mode="after")
+  def require_approval(self):
+      if self.action == "delete" and not self.supervisor_approved:
+          raise ValueError("Delete requires supervisor approval")
+
+This checks: "Given ALL the fields together, is this action authorized?"
+
+The difference: @field_validator sees one field. @model_validator sees
+the whole request. It can enforce rules about field combinations:
+  - "Delete requires supervisor_approved=True"
+  - "Actions on production servers require reason length > 20"
+  - "Restart during business hours requires change_ticket"
+
+THE DEMO FLOW
+  # "Look at the tools — notice the model_validator"
+  cat demos/16_conditional_auth/tools.py
+
+  # "Show Pydantic catching an unauthorized delete"
+  python run_tool.py demos/16_conditional_auth/tools.py server_action \
+    '{"server_id": "SRV-1002", "action": "delete", "reason": "decommission", "supervisor_approved": false}'
+  # → VALIDATION ERROR: Delete requires supervisor_approved=True
+
+  # "Now with approval"
+  python run_tool.py demos/16_conditional_auth/tools.py server_action \
+    '{"server_id": "SRV-1002", "action": "delete", "reason": "decommission", "supervisor_approved": true}'
+  # → Success
+
+  # "Watch the agent try"
+  cat demos/16_conditional_auth/task.txt | python agent.py \
+      demos/16_conditional_auth/system_prompt.txt \
+      --tools demos/16_conditional_auth/tools.py
+
+  Watch: the model tries delete → Pydantic rejects → model adjusts
+  (either adds approval or asks the user).
+
+WHY THIS MATTERS
+The model can be very persuasive. It can construct elaborate
+justifications for why an action should be allowed. But Pydantic
+doesn't read justifications. It checks: is supervisor_approved True
+or False? That's it. The authorization logic is in code, not in a
+prompt that the model might override.
+
+This is the pattern for any high-risk action:
+  1. Define the action as a Pydantic model with an approval field
+  2. Use @model_validator to enforce: risky action → approval required
+  3. The model can propose the action but it can't execute without
+     the approval field being set — and your code controls whether
+     that's possible
+
+CONNECTION TO OTHER DEMOS
+  - Demo 10 (Scoped Tool): @field_validator for individual fields
+  - This demo: @model_validator for cross-field authorization
+  - Demo 09 (Plan Mode): review before execute — same principle at
+    a different level
+  - Together: narrow tools + field validation + cross-field
+    authorization = defense in depth at the tool boundary
+
+Q&A PREPARATION
+
+Q: "Can't the model just set supervisor_approved=True itself?"
+A: It can — and that's where your application logic comes in. In
+   production, supervisor_approved wouldn't come from the model. It
+   would come from a human approval workflow, an SSO check, or a
+   separate authorization service. The Pydantic validator enforces
+   that the field exists and is True. Your application ensures
+   the value is legitimate.
+
+Q: "Isn't this just an if-statement?"
+A: Technically yes. But Pydantic makes it declarative, composable,
+   and testable. The validation is part of the schema, not buried
+   in a handler function. You can unit test it, generate API docs
+   from it, and share it across tools. And it runs BEFORE the tool
+   handler, which means your handler code can assume inputs are
+   already validated.
+
+COST: ~$0.005 per run
