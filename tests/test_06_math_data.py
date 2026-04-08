@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-DEMO_DIR = Path(__file__).parent.parent / "demos" / "03_math"
+DEMO_DIR = Path(__file__).parent.parent / "demos" / "06_math"
 
 VARIANTS = ["counting", "arithmetic", "compound_interest", "tax_bracket"]
 

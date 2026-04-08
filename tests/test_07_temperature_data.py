@@ -10,7 +10,7 @@ layer that sits on top of the model's probability distribution.
 
 from pathlib import Path
 
-DEMO_DIR = Path(__file__).parent.parent / "demos" / "04_temperature"
+DEMO_DIR = Path(__file__).parent.parent / "demos" / "07_temperature"
 
 
 class TestFileStructure:

@@ -58,6 +58,30 @@ of the task. For a simple lookup, 500 tokens of thinking is overkill.
 For a complex analysis with ambiguous inputs, 10,000 tokens may be
 justified.
 
+COMMON MISCONCEPTION: "PLEASE THINK HARD ABOUT THIS"
+People write "think deeply" or "think carefully about this" in their
+prompts, believing it makes the model reason better. This is a
+misunderstanding of the mechanism.
+
+"Think hard" in a prompt is just more input tokens. It might slightly
+shift the probability distribution toward more thoughtful-sounding
+output (because training data pairs "think carefully" with longer,
+more considered responses). But it doesn't allocate more compute
+or give the model more reasoning capacity.
+
+Extended thinking (--thinking) actually allocates a token budget
+for internal reasoning. The model gets dedicated space to reason
+BEFORE producing its response. This is a structural change to the
+inference — more compute, more tokens, more reasoning steps.
+
+  "Please think hard"    → different input tokens, same compute
+  --thinking 5000        → same input tokens, MORE compute
+
+The demo makes this concrete: run the same task with "please think
+carefully" in the prompt (no --thinking) vs with --thinking enabled.
+The thinking version shows actual reasoning. The "please think"
+version just sounds more thoughtful.
+
 THE PRESENTER FLOW
   # "Without thinking — just the output"
   cat $V/task.txt | python ask_claude.py $V/system_prompt.txt

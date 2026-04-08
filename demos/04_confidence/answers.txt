@@ -1,0 +1,13 @@
+Question 1 (correct): What is the capital of France?
+  Correct answer: Paris
+  The model reliably gets this right — it's well-represented in training data.
+
+Question 2 (wrong): What is 7,483 × 9,291?
+  Correct answer: 69,539,553
+  The model reliably gets this wrong — it produces confident but incorrect
+  numbers because it predicts digits rather than computing them (see Demo 6: Math).
+
+The point: read both answers. Can you tell which one is wrong from the TONE?
+You can't. The model produces "69,521,553" with the same assertive confidence
+as "Paris." There is no uncertainty signal in the output. The model doesn't
+hedge more when it's wrong. "I think" is a text pattern, not calibrated doubt.

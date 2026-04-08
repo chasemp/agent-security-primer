@@ -8,7 +8,7 @@ the gatekeeper.
 
 from pathlib import Path
 
-DEMO_DIR = Path(__file__).parent.parent / "demos" / "06_plan_mode"
+DEMO_DIR = Path(__file__).parent.parent / "demos" / "09_plan_mode"
 
 
 class TestFileStructure:

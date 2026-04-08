@@ -1,0 +1,75 @@
+DEMO: STATELESSNESS — Every Call Starts From Zero
+
+KEY TAKEAWAY
+The model has no memory between API calls. Each call is independent.
+What you experience as "memory" in a chat interface is your framework
+re-sending the conversation history as part of the input.
+
+THE DEMO
+Two separate API calls:
+  Call 1: "My project's code name is AURORA. Acknowledge."
+  Call 2: "What is my project's code name?"
+
+The model acknowledges AURORA in call 1. In call 2, it has no idea.
+It's not that it forgot — it never knew. Call 2 is a completely
+independent function invocation with no connection to call 1.
+
+THE PRESENTER FLOW
+  # "Tell the model something"
+  cat call1.txt | python ask_claude.py system_prompt.txt
+  # → "I acknowledge... AURORA"
+
+  # "Now ask about it in a NEW call"
+  cat call2.txt | python ask_claude.py system_prompt.txt
+  # → "I don't have any information about your project"
+
+  # The model doesn't know. It NEVER knew in this call.
+
+WHY THIS MATTERS
+People assume the model "learns" from their interactions. It doesn't.
+The model weights are frozen. Each API call receives:
+  - The system prompt
+  - The messages you send
+  - Nothing else
+
+If you want the model to "remember" something, YOU must include it
+in the input. This is why context window management matters — the
+context window is the ONLY memory the model has. When messages are
+evicted from the context (because it's full), that knowledge is gone.
+
+For agents, this means:
+  - Conversation history is YOUR responsibility
+  - The agent doesn't "build understanding" over turns — it re-reads
+    the entire conversation every turn
+  - If you truncate history to save tokens, the agent loses context
+  - There is no "background knowledge" accumulating — everything
+    the agent knows is in the current context window
+
+CONNECTION TO OTHER DEMOS
+  - Context pollution (Demo 8/11): noise in the context hurts because
+    the context IS the only memory. Garbage in the memory = garbage
+    reasoning.
+  - Error translation (Demo 9/12): cleaning what goes into context
+    matters because it's the only memory the model has to work with.
+
+Q&A PREPARATION
+
+Q: "But ChatGPT remembers things across conversations?"
+A: That's a product feature, not a model feature. The application
+   stores your conversation and re-sends it. Some apps also store
+   a "memory" summary that gets prepended to new conversations.
+   The model itself is stateless every time.
+
+Q: "What about fine-tuning?"
+A: Fine-tuning changes the model weights — that's a different
+   concept. It happens during training, not at inference time.
+   A fine-tuned model has different weights, but it's still
+   stateless at inference. Each call still starts from zero.
+
+Q: "Does this mean RAG is just putting things in the context?"
+A: Exactly. RAG (Retrieval Augmented Generation) retrieves relevant
+   documents and puts them in the context window. The model doesn't
+   "access a database" — your code retrieves data and includes it
+   in the input. Same stateless call, just with more input.
+
+COST: ~$0.001 per run (two cheap calls)

@@ -13,17 +13,20 @@ import pytest
 DEMOS_DIR = Path(__file__).parent.parent / "demos"
 
 DEMO_DIRS = [
-    "01_injection",
-    "02_hallucination",
-    "03_math",
-    "04_temperature",
-    "05_thinking_aloud",
-    "06_plan_mode",
-    "07_scoped_tool",
-    "08_context_pollution",
-    "09_error_translation",
-    "10_credential_exposure",
-    "11_credential_isolation",
+    "01_statelessness",
+    "02_injection",
+    "03_hallucination",
+    "04_confidence",
+    "05_sensitivity",
+    "06_math",
+    "07_temperature",
+    "08_thinking_aloud",
+    "09_plan_mode",
+    "10_scoped_tool",
+    "11_context_pollution",
+    "12_error_translation",
+    "13_credential_exposure",
+    "14_credential_isolation",
 ]
 
 

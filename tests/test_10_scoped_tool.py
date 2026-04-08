@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-DEMO_DIR = Path(__file__).parent.parent / "demos" / "07_scoped_tool"
+DEMO_DIR = Path(__file__).parent.parent / "demos" / "10_scoped_tool"
 
 
 # ---------------------------------------------------------------------------

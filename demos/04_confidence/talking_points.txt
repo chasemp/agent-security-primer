@@ -1,0 +1,84 @@
+DEMO: CONFIDENCE IS NOT CALIBRATED — It Sounds Right Even When It's Wrong
+
+KEY TAKEAWAY
+The model produces wrong answers with the same assertive tone as
+correct ones. There is no uncertainty signal in the output. When
+the model says "I think," that's a text pattern — prediction of
+what a helpful response looks like — not calibrated confidence.
+
+THE DEMO
+Two questions, same system prompt, same model:
+
+  Question 1: "What is the capital of France?"
+  → "The capital of France is Paris."  (CORRECT, confident)
+
+  Question 2: "What is 7,483 × 9,291?"
+  → "69,521,553"  (WRONG, equally confident)
+
+Read both answers. Can you tell which is wrong from the tone? You
+can't. The model doesn't hedge, qualify, or express uncertainty
+when it's wrong. Both answers are produced by the same mechanism:
+predict the most likely next tokens.
+
+THE PRESENTER FLOW
+  # "A question it gets right"
+  cat question_correct.txt | python ask_claude.py system_prompt.txt
+  # → "The capital of France is Paris."
+
+  # "A question it gets wrong"
+  cat question_wrong.txt | python ask_claude.py system_prompt.txt
+  # → "69,521,553"  (correct answer is 69,539,553)
+
+  # "Same tone. Same confidence. One is wrong."
+  cat answers.txt
+
+SEMANTIC CONFIDENCE vs GROUNDED CONFIDENCE
+The model produces SEMANTIC confidence — text that reads as
+confident because confident-sounding text is statistically likely
+in training data. When humans answer questions, they typically
+sound confident. The model learned that pattern.
+
+GROUNDED confidence would require the model to know whether its
+answer is correct. The model has no mechanism for this. It doesn't
+"check its work." It predicts the next token based on the input
+and the tokens it's already generated.
+
+When the model says "I think" or "I believe":
+  - It's NOT expressing calibrated doubt
+  - It's NOT signaling lower certainty
+  - It's completing the pattern "I think [something]" because
+    that's what the training data looks like
+  - Reasoning and sentience are not the same thing
+
+WHY THIS MATTERS FOR DECISION-MAKERS
+If you're using LLM output to make decisions:
+  - You cannot trust the output's tone as a signal of correctness
+  - "The AI said X" is not evidence that X is true
+  - Validation (Demo 3: hallucination, Demo 6: math) is required
+    because the output won't tell you when it's wrong
+  - The model's apparent confidence is a property of text generation,
+    not a property of the answer's correctness
+
+Q&A PREPARATION
+
+Q: "Can't I ask the model how confident it is?"
+A: You can, and it will give you a number. But that number is
+   also a prediction — it's what a confident-sounding confidence
+   score looks like, not a calibrated probability. Some research
+   shows LLM self-reported confidence correlates weakly with
+   accuracy, but it's not reliable enough for critical decisions.
+
+Q: "Is this the same as hallucination?"
+A: Related but different. Hallucination (Demo 3) is about the model
+   fabricating content. This demo is about the model presenting ALL
+   output — fabricated or factual — with the same confident tone.
+   Hallucination is the failure mode. Uncalibrated confidence is
+   why you can't detect the failure mode from the output.
+
+Q: "Does this get better with bigger models?"
+A: Partially. Larger models are wrong less often, but when they ARE
+   wrong, they're just as confident about it. The fundamental issue
+   — same generation mechanism for right and wrong answers — doesn't
+   change with scale.
+
+COST: ~$0.001 per run (two cheap calls)

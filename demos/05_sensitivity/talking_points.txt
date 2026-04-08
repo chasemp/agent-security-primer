@@ -1,0 +1,78 @@
+DEMO: PROMPT SENSITIVITY — Wording Is Load-Bearing
+
+KEY TAKEAWAY
+Same question, different phrasing, different answer — even at
+temperature 0 (fully deterministic). The model doesn't "understand"
+your intent and produce a canonical answer. It pattern-matches on
+the specific tokens you provide. Different tokens, different
+probability distribution, different output.
+
+THE DEMO
+Three phrasings of the same question, all at temperature=0:
+
+  A: "What are the three most important things to consider when
+      choosing a database for a web application?"
+  B: "Name 3 key factors for selecting a web app database."
+  C: "If you had to pick a database for a web app, what 3 things
+      matter most?"
+
+Same question. Same model. Same temperature (0 — deterministic).
+Three different answers: different headings, different structure,
+different emphasis, sometimes different content.
+
+THE PRESENTER FLOW
+  V=demos/05_sensitivity  # or wherever it ends up
+
+  # "Same question, three ways — all at temperature 0"
+  cat $V/phrasing_a.txt | python ask_claude.py $V/system_prompt.txt --temperature 0
+  cat $V/phrasing_b.txt | python ask_claude.py $V/system_prompt.txt --temperature 0
+  cat $V/phrasing_c.txt | python ask_claude.py $V/system_prompt.txt --temperature 0
+
+  # Three different answers. No randomness. Just different input tokens.
+
+WHY THIS HAPPENS
+The model is a function: f(tokens) → probability distribution.
+Different input tokens → different function evaluation → different
+output. "What are the three most important things" and "Name 3 key
+factors" are different sequences of tokens. They activate different
+patterns in the model's weights. The outputs are related (they're
+about databases) but not identical.
+
+This isn't a bug. It's the mechanism. Understanding this changes
+how you approach prompt engineering:
+  - It's not "asking a question" — it's constructing an input
+  - Small wording changes can shift the output significantly
+  - Testing one phrasing doesn't guarantee another works
+  - Prompt templates are code, not prose — they need testing
+
+CONNECTION TO TEMPERATURE (Demo 7)
+Temperature adds randomness ON TOP of this. Even at temperature=0
+(no randomness), different phrasings produce different outputs.
+Temperature makes the SAME phrasing produce different outputs.
+They're independent sources of variation:
+
+  Different phrasing + temp=0 = different outputs (this demo)
+  Same phrasing + temp=1     = different outputs (Demo 7)
+  Different phrasing + temp=1 = maximally different outputs
+
+Q&A PREPARATION
+
+Q: "Does this mean my prompts are unreliable?"
+A: It means they need testing like any other code. If your prompt
+   works with one phrasing, test it with others. If it's fragile
+   (small changes break it), the prompt needs more structure —
+   system prompts, examples, schemas.
+
+Q: "How do I write robust prompts?"
+A: Structure over prose. Use system prompts for the role, schemas
+   for the output format (Demo 3: structured output), and examples
+   for the expected behavior. The more structure, the less sensitive
+   to phrasing.
+
+Q: "Is this why few-shot examples work?"
+A: Partly. Few-shot examples anchor the model's pattern matching
+   on specific input-output pairs. They reduce sensitivity because
+   the examples dominate the probability distribution more than
+   the exact phrasing of the question.
+
+COST: ~$0.003 per run (three calls)

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-DEMO_DIR = Path(__file__).parent.parent / "demos" / "01_injection"
+DEMO_DIR = Path(__file__).parent.parent / "demos" / "02_injection"
 
 VARIANTS = ["technical", "expenses", "contract", "resume"]
 
