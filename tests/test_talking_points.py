@@ -18,11 +18,12 @@ DEMO_DIRS = [
     "03_math",
     "04_temperature",
     "05_thinking_aloud",
-    "06_scoped_tool",
-    "07_context_pollution",
-    "08_error_translation",
-    "09_credential_exposure",
-    "10_credential_isolation",
+    "06_plan_mode",
+    "07_scoped_tool",
+    "08_context_pollution",
+    "09_error_translation",
+    "10_credential_exposure",
+    "11_credential_isolation",
 ]
 
 

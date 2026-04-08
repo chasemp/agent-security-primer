@@ -22,11 +22,12 @@ DEMO_02 = Path(__file__).parent.parent / "demos" / "02_hallucination"
 DEMO_03 = Path(__file__).parent.parent / "demos" / "03_math"
 DEMO_04 = Path(__file__).parent.parent / "demos" / "04_temperature"
 DEMO_05 = Path(__file__).parent.parent / "demos" / "05_thinking_aloud"
-DEMO_06 = Path(__file__).parent.parent / "demos" / "06_scoped_tool"
-DEMO_07 = Path(__file__).parent.parent / "demos" / "07_context_pollution"
-DEMO_08 = Path(__file__).parent.parent / "demos" / "08_error_translation"
-DEMO_09 = Path(__file__).parent.parent / "demos" / "09_credential_exposure"
-DEMO_10 = Path(__file__).parent.parent / "demos" / "10_credential_isolation"
+DEMO_06 = Path(__file__).parent.parent / "demos" / "06_plan_mode"
+DEMO_07 = Path(__file__).parent.parent / "demos" / "07_scoped_tool"
+DEMO_08 = Path(__file__).parent.parent / "demos" / "08_context_pollution"
+DEMO_09 = Path(__file__).parent.parent / "demos" / "09_error_translation"
+DEMO_10 = Path(__file__).parent.parent / "demos" / "10_credential_exposure"
+DEMO_11 = Path(__file__).parent.parent / "demos" / "11_credential_isolation"
 
 
 def _get_api_key():
@@ -291,10 +292,35 @@ class TestDemo05ThinkingAloud:
 
 
 # ---------------------------------------------------------------------------
-# Demo 6: Scoped Tool — agent uses tools correctly
+# Demo 6: Plan Mode — model proposes, nothing executes
 # ---------------------------------------------------------------------------
 
-class TestDemo06ScopedTool:
+class TestDemo06PlanMode:
+    """In dry-run mode, the model produces tool_use JSON but nothing
+    executes. The audience sees the proposal frozen in place."""
+
+    @pytest.mark.live
+    def test_dry_run_produces_proposals_without_executing(self) -> None:
+        from agent import run_agent, load_tools_module
+
+        system = (DEMO_06 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_06 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_06 / "tools.py"))
+
+        result = run_agent(system, task, tools, api_key=_get_api_key(), dry_run=True)
+
+        assert result["dry_run"] is True
+        assert len(result["steps"]) >= 1, "Model should propose at least one tool call"
+        for step in result["steps"]:
+            assert step["output"] is None, "Dry run should not execute tools"
+            assert step["error"] is None, "Dry run should not produce errors"
+
+
+# ---------------------------------------------------------------------------
+# Demo 7: Scoped Tool — agent uses tools correctly
+# ---------------------------------------------------------------------------
+
+class TestDemo07ScopedTool:
     """The agent should use list_servers to find the right server,
     then restart_server with a valid ID. No fabrication."""
 
@@ -302,61 +328,30 @@ class TestDemo06ScopedTool:
     def test_agent_uses_tools_and_succeeds(self) -> None:
         from agent import run_agent, load_tools_module
 
-        system = (DEMO_06 / "system_prompt.txt").read_text().strip()
-        task = (DEMO_06 / "task.txt").read_text().strip()
-        tools = load_tools_module(str(DEMO_06 / "tools.py"))
+        system = (DEMO_07 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_07 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_07 / "tools.py"))
 
         result = run_agent(system, task, tools, api_key=_get_api_key())
 
-        # Should have called at least list_servers and restart_server
         tool_names = [s["tool"] for s in result["steps"]]
         assert "list_servers" in tool_names, "Agent should look up servers first"
         assert "restart_server" in tool_names, "Agent should restart a server"
 
-        # restart_server should succeed (no errors)
         restart_steps = [s for s in result["steps"] if s["tool"] == "restart_server"]
         assert any(s["error"] is None for s in restart_steps), "At least one restart should succeed"
 
 
 # ---------------------------------------------------------------------------
-# Demo 7: Context Pollution — broken tool, retries, cost climbs
+# Demo 8: Context Pollution — broken tool, retries, cost climbs
 # ---------------------------------------------------------------------------
 
-class TestDemo07ContextPollution:
+class TestDemo08ContextPollution:
     """The agent should retry the broken tool multiple times, burning
-    tokens on each attempt. The cost should be noticeably higher than
-    the scoped tool demo because of the retry loop."""
+    tokens on each attempt."""
 
     @pytest.mark.live
     def test_agent_retries_and_burns_tokens(self) -> None:
-        from agent import run_agent, load_tools_module
-
-        system = (DEMO_07 / "system_prompt.txt").read_text().strip()
-        task = (DEMO_07 / "task.txt").read_text().strip()
-        tools = load_tools_module(str(DEMO_07 / "tools.py"))
-
-        result = run_agent(system, task, tools, api_key=_get_api_key(), max_turns=5)
-
-        # Should have multiple retry attempts
-        assert result["turns"] >= 3, (
-            f"Expected at least 3 turns of retrying, got {result['turns']}"
-        )
-        # Cost should be meaningfully higher than a clean 2-turn interaction
-        assert result["total_input_tokens"] > 3000, (
-            f"Expected context pollution to drive up input tokens, got {result['total_input_tokens']}"
-        )
-
-
-# ---------------------------------------------------------------------------
-# Demo 8: Error Translation — clean errors, fewer tokens
-# ---------------------------------------------------------------------------
-
-class TestDemo08ErrorTranslation:
-    """With translated errors, the model should make a clean decision
-    faster and with fewer tokens than Demo 7's raw errors."""
-
-    @pytest.mark.live
-    def test_fewer_tokens_than_raw_errors(self) -> None:
         from agent import run_agent, load_tools_module
 
         system = (DEMO_08 / "system_prompt.txt").read_text().strip()
@@ -365,18 +360,41 @@ class TestDemo08ErrorTranslation:
 
         result = run_agent(system, task, tools, api_key=_get_api_key(), max_turns=5)
 
-        # With clean errors, the model should decide faster
-        # (fewer turns or fewer tokens than Demo 7)
+        assert result["turns"] >= 3, (
+            f"Expected at least 3 turns of retrying, got {result['turns']}"
+        )
+        assert result["total_input_tokens"] > 3000, (
+            f"Expected context pollution to drive up input tokens, got {result['total_input_tokens']}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Demo 9: Error Translation — clean errors, fewer tokens
+# ---------------------------------------------------------------------------
+
+class TestDemo09ErrorTranslation:
+    """With translated errors, the model should decide faster."""
+
+    @pytest.mark.live
+    def test_fewer_tokens_than_raw_errors(self) -> None:
+        from agent import run_agent, load_tools_module
+
+        system = (DEMO_09 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_09 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_09 / "tools.py"))
+
+        result = run_agent(system, task, tools, api_key=_get_api_key(), max_turns=5)
+
         assert result["total_input_tokens"] < 5000, (
             f"Translated errors should keep tokens lower, got {result['total_input_tokens']}"
         )
 
 
 # ---------------------------------------------------------------------------
-# Demo 9: Credential Exposure — secrets end up in the context
+# Demo 10: Credential Exposure — secrets end up in the context
 # ---------------------------------------------------------------------------
 
-class TestDemo09CredentialExposure:
+class TestDemo10CredentialExposure:
     """The model should call read_config, putting credentials into
     the context window."""
 
@@ -384,9 +402,9 @@ class TestDemo09CredentialExposure:
     def test_model_reads_credentials(self) -> None:
         from agent import run_agent, load_tools_module
 
-        system = (DEMO_09 / "system_prompt.txt").read_text().strip()
-        task = (DEMO_09 / "task.txt").read_text().strip()
-        tools = load_tools_module(str(DEMO_09 / "tools.py"))
+        system = (DEMO_10 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_10 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_10 / "tools.py"))
 
         result = run_agent(system, task, tools, api_key=_get_api_key())
 
@@ -394,7 +412,6 @@ class TestDemo09CredentialExposure:
         assert "read_config" in tool_names, (
             "Model should have called read_config, exposing credentials"
         )
-        # The credential should appear in the tool output (context pollution)
         config_steps = [s for s in result["steps"] if s["tool"] == "read_config"]
         any_secret = any(
             "password" in (s["output"] or "").lower() or
@@ -406,10 +423,10 @@ class TestDemo09CredentialExposure:
 
 
 # ---------------------------------------------------------------------------
-# Demo 10: Credential Isolation — secrets stay out of the context
+# Demo 11: Credential Isolation — secrets stay out of the context
 # ---------------------------------------------------------------------------
 
-class TestDemo10CredentialIsolation:
+class TestDemo11CredentialIsolation:
     """The model queries data successfully but credentials never
     appear in any tool output."""
 
@@ -417,16 +434,14 @@ class TestDemo10CredentialIsolation:
     def test_model_gets_data_without_credentials(self) -> None:
         from agent import run_agent, load_tools_module
 
-        system = (DEMO_10 / "system_prompt.txt").read_text().strip()
-        task = (DEMO_10 / "task.txt").read_text().strip()
-        tools = load_tools_module(str(DEMO_10 / "tools.py"))
+        system = (DEMO_11 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_11 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_11 / "tools.py"))
 
         result = run_agent(system, task, tools, api_key=_get_api_key())
 
-        # Should have queried successfully
         assert "rack" in result["response"].lower() or "SRV" in result["response"]
 
-        # No credential should appear anywhere in the steps
         for step in result["steps"]:
             output = step.get("output") or ""
             assert "password" not in output.lower()

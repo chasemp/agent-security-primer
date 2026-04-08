@@ -28,8 +28,12 @@ PRICING = {
 
 
 def run_agent(system_prompt, task, tools_module, model="claude-haiku-4-5",
-              api_key=None, max_turns=10):
-    """Run the agent loop. Returns a result dict with response, steps, and cost."""
+              api_key=None, max_turns=10, dry_run=False):
+    """Run the agent loop. Returns a result dict with response, steps, and cost.
+
+    If dry_run is True, shows proposed tool calls without executing them.
+    This is 'terraform plan' for agents — the model proposes, you review.
+    """
     client = anthropic.Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
 
     tool_defs = tools_module.TOOL_DEFINITIONS
@@ -59,6 +63,14 @@ def run_agent(system_prompt, task, tools_module, model="claude-haiku-4-5",
             for block in response.content:
                 if block.type == "text":
                     response_text += block.text
+            break
+
+        # In dry_run mode, record proposed calls and stop
+        if dry_run:
+            for block in response.content:
+                if block.type == "tool_use":
+                    steps.append({"tool": block.name, "input": block.input,
+                                  "output": None, "error": None})
             break
 
         # Execute each tool call
@@ -103,6 +115,7 @@ def run_agent(system_prompt, task, tools_module, model="claude-haiku-4-5",
         "total_output_tokens": total_output,
         "cost_usd": cost,
         "model": model,
+        "dry_run": dry_run,
     }
 
 
@@ -110,15 +123,23 @@ def format_agent_result(result):
     """Format an agent result for terminal display."""
     lines = []
 
-    for i, step in enumerate(result["steps"], 1):
-        lines.append(f"[TOOL CALL {i}] {step['tool']}({json.dumps(step['input'])})")
-        if step["error"]:
-            lines.append(f"[TOOL ERROR] {step['error']}")
-        else:
-            lines.append(f"[TOOL RESULT] {step['output']}")
+    if result.get("dry_run"):
+        lines.append("[DRY RUN — proposed actions, not executed]")
         lines.append("")
 
-    lines.append(f"[RESPONSE] {result['response']}")
+    for i, step in enumerate(result["steps"], 1):
+        if result.get("dry_run"):
+            lines.append(f"[PROPOSED {i}] {step['tool']}({json.dumps(step['input'])})")
+        else:
+            lines.append(f"[TOOL CALL {i}] {step['tool']}({json.dumps(step['input'])})")
+            if step["error"]:
+                lines.append(f"[TOOL ERROR] {step['error']}")
+            else:
+                lines.append(f"[TOOL RESULT] {step['output']}")
+        lines.append("")
+
+    if result["response"]:
+        lines.append(f"[RESPONSE] {result['response']}")
     lines.append("")
     lines.append(f"--- {result['model']} ({result['turns']} turns) ---")
     lines.append(f"Input:  {result['total_input_tokens']} tokens")
@@ -156,10 +177,15 @@ if __name__ == "__main__":
         model = args[idx + 1]
         del args[idx:idx + 2]
 
+    dry_run = False
+    if "--dry-run" in args:
+        args.remove("--dry-run")
+        dry_run = True
+
     if not tools_path:
         print("Error: --tools is required", file=sys.stderr)
         sys.exit(1)
 
     tools_module = load_tools_module(tools_path)
-    result = run_agent(system_prompt, task, tools_module, model=model)
+    result = run_agent(system_prompt, task, tools_module, model=model, dry_run=dry_run)
     print(format_agent_result(result))

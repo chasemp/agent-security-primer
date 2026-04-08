@@ -1,0 +1,106 @@
+DEMO 6: PLAN MODE — Terraform Plan for Agents
+
+KEY TAKEAWAY
+The model doesn't execute anything. It writes JSON that says "I want
+to call this tool with these inputs." Your code decides whether to
+act. In plan mode, you see the proposal without any action taken.
+This is the most important thing to understand about AI agents.
+
+INTRODUCING THE AGENT LOOP
+
+This is the first demo that uses agent.py — a multi-turn loop:
+
+  1. Send the task to the model
+  2. Model responds with tool_use JSON (a proposal)
+  3. Your code decides: execute or not?
+  4. If executed, send the result back, go to step 2
+  5. If not (dry run), show the proposal and stop
+
+The model produces the SAME tool_use JSON regardless of whether you
+execute it. It doesn't know if it's in plan mode or execution mode.
+There is no API parameter that tells the model "this is planning."
+The model always proposes. Your code always decides.
+
+This is like terraform plan: the system tells you what it WOULD do,
+and you review before applying.
+
+THE DEMO FLOW
+
+  # "Here are the tools available to the agent"
+  cat demos/06_plan_mode/tools.py
+
+  # "Here's the task"
+  cat demos/06_plan_mode/task.txt
+
+  # "Plan mode — show what the model WANTS to do"
+  cat demos/06_plan_mode/task.txt | python agent.py \
+      demos/06_plan_mode/system_prompt.txt \
+      --tools demos/06_plan_mode/tools.py \
+      --dry-run
+
+  # Output shows [PROPOSED] — not [TOOL CALL]
+  # Nothing executed. Just the model's intent.
+
+  # "Now let's actually run it (Demo 7)"
+  cat demos/07_scoped_tool/task.txt | python agent.py \
+      demos/07_scoped_tool/system_prompt.txt \
+      --tools demos/07_scoped_tool/tools.py
+
+  # Same tools, same task. Now [TOOL CALL] and [TOOL RESULT] appear.
+
+THE MODEL WRITES JSON. YOUR CODE DECIDES.
+
+When the model "calls a tool," here's what actually happens:
+
+  1. The model outputs a tool_use block:
+     {"name": "list_servers", "input": {"rack": 7}, "id": "toolu_abc"}
+
+  2. The API returns stop_reason: "tool_use"
+
+  3. YOUR CODE reads that JSON and decides:
+     - Execute it? → call the function, send result back
+     - Block it?   → send an error back, or stop entirely
+     - Plan only?  → display it, don't execute, stop
+
+  4. The model has NO side channel. It cannot bypass step 3.
+     If you don't execute the tool call, nothing happens.
+     The model proposed. You declined. That's it.
+
+This is the fundamental security boundary of every AI agent.
+Every other demo builds on this: scoped tools (Demo 7), context
+pollution (Demo 8), error translation (Demo 9), credential
+isolation (Demo 11) — all of them live in that "YOUR CODE" box.
+
+WHY PLAN MODE MATTERS
+
+  1. AUDIT: Before an agent takes action in production, review
+     its proposed actions. Log them. Approve or reject.
+
+  2. TESTING: Run the agent in plan mode against test scenarios.
+     Does it propose reasonable actions? Does it fabricate?
+
+  3. SAFETY: For high-risk operations (delete, transfer funds,
+     modify permissions), require plan mode first, human review,
+     then execution.
+
+  4. UNDERSTANDING: The audience sees that agents are not magic.
+     They produce structured text. Your code does the rest.
+
+Q&A PREPARATION
+
+Q: "Does the model know it's in plan mode?"
+A: No. There's no API parameter for plan mode. The model produces
+   the same tool_use JSON regardless. It doesn't know if you'll
+   execute or not. Plan mode is YOUR code's decision.
+
+Q: "What's the difference between this and just... not running it?"
+A: Plan mode makes the proposed actions VISIBLE. Instead of "the
+   agent did something," you see "the agent WANTED to do something."
+   That visibility is the security control.
+
+Q: "Can I implement approval workflows with this?"
+A: Yes. Run in dry-run, show the proposals, get human approval,
+   then re-run in execution mode. Some frameworks do this with a
+   "confirm before execute" pattern on sensitive tool categories.
+
+COST: ~$0.002 per run (one API call, no tool execution)

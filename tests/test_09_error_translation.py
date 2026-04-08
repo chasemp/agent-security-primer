@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-DEMO_DIR = Path(__file__).parent.parent / "demos" / "08_error_translation"
+DEMO_DIR = Path(__file__).parent.parent / "demos" / "09_error_translation"
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +87,7 @@ class TestToolsModule:
         """Compare with Demo 7's raw error (~900 chars).
         The translated error should be a fraction of that."""
         import importlib.util
-        demo7_path = Path(__file__).parent.parent / "demos" / "07_context_pollution" / "tools.py"
+        demo7_path = Path(__file__).parent.parent / "demos" / "08_context_pollution" / "tools.py"
         spec = importlib.util.spec_from_file_location("raw_tools", demo7_path)
         raw_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(raw_module)

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-DEMO_DIR = Path(__file__).parent.parent / "demos" / "10_credential_isolation"
+DEMO_DIR = Path(__file__).parent.parent / "demos" / "11_credential_isolation"
 
 
 class TestFileStructure:

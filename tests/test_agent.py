@@ -253,6 +253,70 @@ class TestRunAgent:
 
 
 # ---------------------------------------------------------------------------
+# dry_run mode — show proposed tool calls without executing
+# ---------------------------------------------------------------------------
+
+class TestDryRun:
+    def test_does_not_execute_tools(self) -> None:
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_tool_use_response(
+                "restart_server", {"server_id": "SRV-1002", "reason": "test"}
+            )
+
+            result = run_agent(
+                system_prompt="x", task="restart it",
+                tools_module=_make_tools_module(),
+                api_key="fake", dry_run=True,
+            )
+
+        # Only one API call — no tool execution, no continuation
+        assert mock_client.messages.create.call_count == 1
+
+    def test_returns_proposed_steps(self) -> None:
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_tool_use_response(
+                "restart_server", {"server_id": "SRV-1002", "reason": "test"}
+            )
+
+            result = run_agent(
+                system_prompt="x", task="restart it",
+                tools_module=_make_tools_module(),
+                api_key="fake", dry_run=True,
+            )
+
+        assert len(result["steps"]) == 1
+        assert result["steps"][0]["tool"] == "restart_server"
+        assert result["steps"][0]["output"] is None
+        assert result["steps"][0]["error"] is None
+
+    def test_marks_result_as_dry_run(self) -> None:
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_tool_use_response(
+                "echo", {"message": "hello"}
+            )
+
+            result = run_agent(
+                system_prompt="x", task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake", dry_run=True,
+            )
+
+        assert result["dry_run"] is True
+
+
+# ---------------------------------------------------------------------------
 # format_agent_result
 # ---------------------------------------------------------------------------
 
