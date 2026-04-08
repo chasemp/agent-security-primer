@@ -43,14 +43,48 @@ THE MATH (10-turn agent loop, 2K system prompt)
 
   At scale: 100 agents × 30 turns/day × $15/MTok = real money.
 
-THE MINIMUM THRESHOLD
-Prompt caching requires a minimum prompt size to activate:
-  - ~1024 tokens for most Claude models
-  - ~2048 tokens for some variants
+THE MINIMUM THRESHOLD — IT VARIES BY MODEL
 
-If your system prompt is too short, cache_control is accepted but
-caching silently does nothing. This demo uses a realistic operations
-agent prompt (~2000 tokens) to ensure caching activates.
+Prompt caching requires a minimum prompt size. The threshold
+varies by model tier, and this is worth understanding:
+
+  ┌────────────────┬───────────┬──────────┬──────────────────┐
+  │ Model          │ Min Tokens│ Input $/M│ Cache ROI        │
+  ├────────────────┼───────────┼──────────┼──────────────────┤
+  │ Sonnet 4.6     │ ~1,024    │ $3.00    │ Moderate         │
+  │ Haiku 4.5      │ ~4,096    │ $1.00    │ Low (cheap model)│
+  │ Opus 4.6       │ ~4,096    │ $15.00   │ Massive          │
+  └────────────────┴───────────┴──────────┴──────────────────┘
+
+The insight: Haiku is so fast and cheap that the overhead of
+maintaining a cache isn't worth it until the prompt is large.
+But Opus has the SAME high threshold — and that's where caching
+matters most because the per-token cost is 15x Haiku.
+
+If your system prompt is below the threshold, cache_control is
+accepted but caching silently does nothing. No error. No warning.
+You're paying full price and don't know it.
+
+THE DEMO — SHOW THE TIERS
+  # "Same prompt, three models, watch the cache columns"
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py --cache \
+      --model claude-sonnet-4-6
+
+  # → Cache write on turn 1, cache read on turns 2+
+  #   Sonnet caches our prompt (~3600 tokens, above 1024 threshold)
+
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py --cache \
+      --model claude-haiku-4-5
+
+  # → No caching. Same prompt, but below Haiku's 4096 threshold.
+  #   cache_write and cache_read both show 0.
+
+  # "Same threshold, but now it matters because Opus is $15/MTok"
+  # (Optional — Opus is expensive to demo live)
 
 HOW CACHING WORKS — PREFIX MATCHING
 
@@ -479,6 +513,25 @@ implementation is just faster and more comprehensive.
 
   # Show RTK's actual savings (if RTK is installed)
   rtk gain
+
+THE JAVASCRIPT MINIFICATION ANALOGY
+If you've worked with web development, you already know this
+pattern. JavaScript minification strips whitespace, shortens
+variable names, and removes comments before sending code to the
+browser. The code does the same thing. The payload is smaller.
+The browser is faster.
+
+Token minimization is the same idea applied to LLM input.
+Strip whitespace, compact JSON, remove noise. The information
+is the same. The token count is smaller. The API call is cheaper.
+
+The difference: JS minification saves bandwidth (download time).
+Token minimization saves money (per-token pricing). In both
+cases, you're compressing BEFORE the expensive operation — the
+browser parsing JS, or the model processing tokens.
+
+RTK is to LLM tokens what Webpack/Terser is to JavaScript
+bundles. Same principle, different domain.
 
 WHY MINIMIZATION MATTERS FOR AGENTS
 In an agent loop, tool results accumulate in the conversation

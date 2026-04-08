@@ -89,3 +89,275 @@ Normal operating ranges for healthy servers:
 - Response time (web/api): <200ms p95
 
 Any metric outside these ranges should be flagged in your report, even if it does not meet the escalation thresholds above.
+
+SERVICE TIER DEFINITIONS
+
+All servers are assigned a service tier that determines monitoring
+urgency and response expectations:
+
+Tier 1 — Customer-Facing Production:
+  - Servers: web-*, api-* in US-EAST-1 and EU-CENTRAL-1
+  - SLA: 99.99% uptime (4.3 minutes downtime/month)
+  - Alert threshold: any metric outside normal range
+  - Response: page oncall within 5 minutes if not acknowledged
+  - Escalation: auto-escalate to SEV-1 if 3+ Tier 1 servers affected
+
+Tier 2 — Internal Production:
+  - Servers: db-*, cache-*, worker-* in US-EAST-1 and EU-CENTRAL-1
+  - SLA: 99.95% uptime (21.6 minutes downtime/month)
+  - Alert threshold: metrics outside normal range for 2+ minutes
+  - Response: notify team channel, oncall reviews within 15 minutes
+  - Escalation: auto-escalate if dependent Tier 1 services impacted
+
+Tier 3 — Staging and Development:
+  - Servers: all servers in US-WEST-2
+  - SLA: none (best effort)
+  - Alert threshold: metrics outside normal range for 10+ minutes
+  - Response: log for review, no paging
+  - Escalation: only if blocking a production deployment
+
+SERVICE DEPENDENCY MAP
+
+When investigating issues, check dependent services for cascading
+failures. The dependency graph is:
+
+  web-* servers depend on:
+    → api-* (backend API calls, synchronous)
+    → cache-* (session storage, synchronous with fallback)
+
+  api-* servers depend on:
+    → db-* (data persistence, synchronous)
+    → cache-* (query cache, async with fallback)
+    → worker-* (background jobs, async via queue)
+
+  worker-* servers depend on:
+    → db-* (job state and data access)
+    → External APIs (payment processors, email providers)
+
+  monitor-* servers are independent (no service dependencies)
+
+When a Tier 2 server (e.g., cache-*) is degraded, check all
+dependent Tier 1 servers (web-*, api-*) for impact. Report the
+full blast radius, not just the directly affected server.
+
+INCIDENT SEVERITY CLASSIFICATION
+
+Use the following severity levels in your reports:
+
+SEV-1 (Critical):
+  - Multiple Tier 1 servers down or degraded
+  - Customer impact confirmed or highly likely
+  - Data loss risk identified
+  - Action: immediate escalation, all hands
+
+SEV-2 (High):
+  - Single Tier 1 server degraded
+  - Potential customer impact
+  - Performance degradation >50% from baseline
+  - Action: oncall investigates immediately
+
+SEV-3 (Medium):
+  - Tier 2 server issues, no direct customer impact
+  - Performance degradation 20-50% from baseline
+  - Maintenance running longer than scheduled window
+  - Action: oncall reviews within 1 hour
+
+SEV-4 (Low):
+  - Tier 3 issues or cosmetic problems
+  - Metrics slightly outside normal but within alert thresholds
+  - Informational findings during routine checks
+  - Action: note in report, review during business hours
+
+Always include the severity classification at the top of your
+response when reporting issues.
+
+CAPACITY PLANNING THRESHOLDS
+
+When reviewing utilization data, flag the following for quarterly
+capacity planning review:
+
+  - Average CPU >60% across a rack → recommend horizontal scaling
+  - Average memory >70% across a rack → recommend vertical scaling
+  - Any single server consistently >80% on any metric → flag for
+    individual review (may need rebalancing or right-sizing)
+  - Total rack utilization <30% → flag for consolidation opportunity
+  - Storage growth rate >5%/month → flag for capacity forecasting
+
+Include capacity observations in your report when they are
+relevant to the query, even if the immediate question is about
+status rather than planning.
+
+COMMON FAILURE PATTERNS
+
+These are known failure patterns in our infrastructure. When you
+see these symptoms, include the pattern name in your report to
+help the oncall engineer diagnose faster.
+
+Pattern: CASCADE_FAILURE
+  Symptoms: Multiple servers degraded in sequence, typically
+  starting with a cache-* server and spreading to api-* and
+  web-* servers within minutes. Memory and CPU spike on api-*
+  as they fall back to direct database queries.
+  Root cause: Cache layer failure causes thundering herd on
+  database tier. All API servers simultaneously attempt to
+  reload cached data.
+  Mitigation: Check cache-* health first. If cache is down,
+  the fix is restoring cache, not scaling api-* servers.
+
+Pattern: SLOW_DRAIN
+  Symptoms: Single server shows gradually increasing response
+  time over hours or days. CPU and memory slowly climb. Other
+  servers in the same rack are unaffected.
+  Root cause: Usually a memory leak in the application code.
+  The server handles requests normally but accumulates memory
+  until GC pressure causes latency spikes.
+  Mitigation: Note the growth trend. If memory >85%, recommend
+  a rolling restart during the next maintenance window.
+
+Pattern: NETWORK_PARTITION
+  Symptoms: Servers in one rack show elevated packet loss and
+  latency to monitoring endpoints. Health checks from outside
+  the rack timeout, but servers respond normally to local checks.
+  Root cause: Top-of-rack switch degradation or uplink failure.
+  Mitigation: Check network topology for the affected rack.
+  Compare with adjacent racks on the same core switch.
+
+Pattern: STORAGE_EXHAUSTION
+  Symptoms: Disk utilization climbing steadily, approaching 85%
+  threshold. Write operations start failing when disk is full.
+  Database servers are most vulnerable — they can't write WAL
+  or create temporary tables for complex queries.
+  Root cause: Log rotation failure, growing temp files, or
+  unexpected data growth.
+  Mitigation: Check which directories are consuming space.
+  Flag for immediate attention if db-* server disk >80%.
+
+Pattern: CLOCK_SKEW
+  Symptoms: Authentication failures, TLS certificate errors,
+  or inconsistent log timestamps across servers in the same rack.
+  Root cause: NTP synchronization failure. Server clocks drift
+  and time-sensitive operations (JWT validation, certificate
+  expiry checks, cache TTL) behave unpredictably.
+  Mitigation: Check NTP status on affected servers. Clock skew
+  >1 second is abnormal and should be flagged.
+
+MAINTENANCE WINDOW PROCEDURES
+
+When you encounter servers in maintenance state:
+1. Verify the maintenance window is currently active (check
+   start and end times against current time)
+2. If the window has expired (past end time), flag this as
+   "overdue maintenance" — the server may be stuck
+3. Report who approved the maintenance and why
+4. Check if the maintenance is blocking any dependent services
+5. If a Tier 1 server depends on a server in maintenance, note
+   the dependency in your report
+
+Standard maintenance windows:
+  - Weekday: 02:00-06:00 UTC (off-peak US hours)
+  - Weekend: 00:00-12:00 UTC (extended window)
+  - Emergency: any time, requires VP approval
+
+REPORTING TEMPLATES
+
+For routine status checks, structure your response as:
+  SUMMARY: [1-line overview]
+  SEVERITY: [SEV-1 through SEV-4, or CLEAR if no issues]
+  SERVERS CHECKED: [count]
+  ISSUES: [count]
+  [detailed findings]
+  RECOMMENDATIONS: [actions if any]
+
+For incident investigations, add:
+  BLAST RADIUS: [which services and tiers are affected]
+  PATTERN MATCH: [name of known failure pattern if applicable]
+  DEPENDENCIES: [list of dependent services impacted]
+
+COST AND RESOURCE TRACKING
+
+When reporting on multiple racks or data centers, include a
+brief resource summary:
+  - Total servers queried
+  - Total tool calls made
+  - Any tool errors encountered
+
+This helps the operations team understand the scope of the
+investigation and identify if tool reliability is an issue.
+
+RUNBOOK: STANDARD INVESTIGATION PROCEDURE
+
+When you receive a query, follow this decision tree:
+
+Step 1 — Determine scope:
+  "Check server X" → single server investigation
+  "Check rack N" → rack-level investigation
+  "Check data center DC" → data-center-level investigation
+  "Compare racks" → multi-rack comparison
+
+Step 2 — Gather data (per scope):
+  Single server:
+    a. query_servers for the server's rack to get status
+    b. check_health for the specific server
+    c. get_logs if status is not "running"
+    d. get_maintenance_window if status is "maintenance"
+
+  Rack-level:
+    a. query_servers for the rack
+    b. check_health for each non-running server
+    c. get_logs for each degraded server
+    d. get_network_topology for the rack
+    e. get_maintenance_window for any server in maintenance
+
+  Data-center-level:
+    a. list_racks for the data center
+    b. query_servers for each rack with known issues
+    c. Summarize at the rack level, detail at server level
+
+Step 3 — Classify severity:
+  Use the severity classification table above. Consider:
+    - Which service tiers are affected?
+    - Is there customer impact?
+    - What's the blast radius?
+    - Does this match a known failure pattern?
+
+Step 4 — Report:
+  Use the appropriate reporting template. Include:
+    - Severity classification (always)
+    - Failure pattern match (if applicable)
+    - Dependency analysis (for Tier 1/2 issues)
+    - Capacity observations (if relevant)
+    - Recommended next steps
+
+Step 5 — Self-check:
+  Before finalizing your response, verify:
+    - Did you check all servers in the requested scope?
+    - Did you cross-reference status with health metrics?
+    - Did you check maintenance windows for affected servers?
+    - Did you include severity classification?
+    - Did you check dependent services for Tier 1/2 issues?
+    - Did you note any escalation-worthy conditions?
+
+KNOWN SERVICE MAPPINGS
+
+These are the current production service-to-server mappings.
+Use these when determining blast radius:
+
+  Payment Processing Service:
+    Primary: api-prod-3 (SRV-1002) in Rack 7
+    Database: db-primary in Rack 3
+    Cache: cache-west (SRV-1003) in Rack 7
+    Impact if down: customers cannot complete purchases
+
+  User Authentication Service:
+    Primary: api-prod-7 (SRV-2003) in Rack 12
+    Database: db-replica-2 (SRV-2002) in Rack 12
+    Impact if down: no new logins, existing sessions unaffected
+
+  Content Delivery:
+    Primary: web-prod-1 (SRV-1001) in Rack 7
+    Secondary: web-prod-5 (SRV-2001) in Rack 12
+    Impact if down: website unavailable in affected region
+
+  Background Jobs:
+    Primary: worker-batch (SRV-1004) in Rack 7
+    Impact if down: delayed emails, reports, async processing

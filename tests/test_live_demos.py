@@ -379,18 +379,19 @@ class TestDemo16ConditionalAuth:
 class TestDemo17Tokenomics:
     @pytest.mark.live
     def test_cache_activates_on_multiturn(self) -> None:
-        """With cache=True, cache_read_tokens should be >0 on turn 2+."""
+        """With cache=True on Sonnet (lower threshold), cache_read_tokens >0."""
         from agent import run_agent, load_tools_module
         d = DEMOS / "17_tokenomics"
         system = (d / "system_prompt.txt").read_text().strip()
         task = (d / "task.txt").read_text().strip()
         tools = load_tools_module(str(d / "tools.py"))
+        # Use Sonnet — caches at ~1024 tokens. Haiku/Opus need ~4096.
         result = run_agent(system, task, tools, api_key=_get_api_key(),
-                           cache=True)
+                           model="claude-sonnet-4-6", cache=True)
         assert result["turns"] >= 2, "Need at least 2 turns to test cache read"
         assert result.get("total_cache_read_tokens", 0) > 0, (
             "Cache read tokens should be >0 when caching is enabled "
-            "and the agent runs multiple turns"
+            "on Sonnet with a multi-turn agent run"
         )
 
     @pytest.mark.live
@@ -503,8 +504,9 @@ class TestDemo20Classification:
 
     @pytest.mark.live
     def test_tricky_ticket_with_examples_classifies_correctly(self) -> None:
-        """Tricky ticket with misleading keywords + examples should classify
-        as Authentication (root cause), not Billing (surface keywords)."""
+        """Tricky ticket: surface says Billing (payment declined, cards,
+        upgrade plan) but root cause is Authentication (started after
+        password change). With examples, model should see root cause."""
         from ask_claude import send_message
         d = DEMOS / "20_classification" / "technical"
         system = (d / "system_prompt_examples.txt").read_text().strip()
@@ -513,6 +515,6 @@ class TestDemo20Classification:
                               temperature=0)
         text = result["text"].lower()
         assert "authentication" in text, (
-            f"Expected 'Authentication' (root cause) classification "
-            f"with examples, got: {result['text']}"
+            f"Expected 'Authentication' (root cause: password change "
+            f"broke billing session) classification, got: {result['text']}"
         )

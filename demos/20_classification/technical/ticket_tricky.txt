@@ -1,7 +1,9 @@
-Ever since you updated the login page last Tuesday, my team
-can't access any of our billing history or download invoices.
-We click "Billing" in the sidebar and it just spins forever.
-My boss needs the Q1 invoices for the audit by Friday. Three
-of us have tried different browsers and cleared our caches.
-The rest of the app works fine — it's just the billing section
-that's completely broken after your authentication update.
+I keep getting "payment method declined" when I try to upgrade
+my plan, but my credit card works fine everywhere else and I
+just bought something on Amazon ten minutes ago. I checked
+with my bank and there are no holds or blocks. I tried three
+different cards and they all fail with the same error. My
+colleague on the same company account upgraded yesterday with
+no issues. This started right after I changed my password
+on Monday — could the billing system be checking something
+related to my account credentials?

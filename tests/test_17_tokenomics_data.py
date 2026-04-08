@@ -48,10 +48,15 @@ class TestSystemPromptSize:
     """
 
     def test_system_prompt_exceeds_cache_threshold(self) -> None:
+        """Prompt must be large enough for Sonnet caching (~1024 tokens).
+        Sonnet caches at ~1024 tokens. Haiku/Opus need ~4096.
+        At ~4 chars/token, 3000 chars ≈ 750 tokens — we need more for
+        Sonnet and much more for Haiku. Our prompt targets Sonnet's
+        threshold; talking points explain per-model differences."""
         content = (DEMO_DIR / "system_prompt.txt").read_text()
-        assert len(content) > 3000, (
-            f"System prompt is {len(content)} chars — needs >3000 to exceed "
-            f"the ~1024 token minimum for prompt caching"
+        assert len(content) > 5000, (
+            f"System prompt is {len(content)} chars — needs >5000 to exceed "
+            f"the ~1024 token minimum for Sonnet prompt caching"
         )
 
     def test_system_prompt_has_substance(self) -> None:
