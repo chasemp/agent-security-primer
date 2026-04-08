@@ -53,31 +53,113 @@ caching silently does nothing. This demo uses a realistic operations
 agent prompt (~2000 tokens) to ensure caching activates.
 
 HOW CACHING WORKS — PREFIX MATCHING
-Caching is prefix-based. The API caches everything from the start
-of the input up to the cache_control breakpoint. On subsequent
-requests, if the prefix matches exactly, cached tokens are read
-instead of reprocessed.
 
-In a multi-turn agent loop:
+THE MENTAL MODEL
+Think of the API request as a long string of text. The server
+hashes it from the beginning, section by section. A cache_control
+marker says "everything from byte 0 to HERE is a cacheable
+section." On the next request, the server hashes the incoming
+text from the start and compares: "do I already have this
+prefix?" If yes, it reads from cache instead of reprocessing.
 
-  Turn 1: [system_prompt <- CACHE WRITE] + user_msg
-           ----------------------------   --------
-           cached (1.25x)                 processed (1x)
+It's like a book. If you've already read chapters 1-5, and
+someone hands you the same book with a new chapter 6, you
+don't re-read chapters 1-5. You skip to chapter 6. The
+cache_control marker is the bookmark that says "I've read
+up to here."
 
-  Turn 2: [system_prompt <- CACHE READ]  + user + asst_T1 + tool_T1
-           ----------------------------   ----------------------------
-           from cache (0.1x)              processed (1x)
+THE SIMPLE CASE — JUST THE SYSTEM PROMPT
 
-  Turn 3: [system_prompt <- CACHE READ]  + user + asst_T1 + tool_T1 + asst_T2 + tool_T2
-           ----------------------------   -------------------------------------------------
-           from cache (0.1x)              processed (1x)
+The simplest version: cache only the system prompt.
 
-The system prompt is always the prefix, so it always hits the
-cache. The growing conversation history after the prefix is
-processed fresh every turn — that part is NOT cached.
+  Turn 1: [system_prompt CC] + user_msg
+           ┌───────────────┐  ┌────────┐
+           │ CACHE WRITE   │  │ process│
+           │ (1.25x)       │  │ (1x)   │
+           └───────────────┘  └────────┘
 
-The cache is keyed on exact prefix content — if you change one
-character in the system prompt, it's a cache miss.
+  Turn 2: [system_prompt CC] + user_msg + asst_T1 + tool_T1
+           ┌───────────────┐  ┌─────────────────────────────┐
+           │ CACHE READ    │  │ process fresh               │
+           │ (0.1x)        │  │ (1x)                        │
+           └───────────────┘  └─────────────────────────────┘
+
+The system prompt is byte-for-byte identical on both turns.
+The server sees the match and reads it from cache. Everything
+after the cached prefix is processed fresh.
+
+THE MOVING BREAKPOINT — CONVERSATION CACHING
+
+Now the interesting part. What if we put cache_control on
+the LATEST user message instead of just the system prompt?
+The cached prefix grows each turn:
+
+  Turn 1: [system CC] + [tools CC] + [user_1 CC]
+           ┌──────────────────────────────────────┐
+           │ CACHE WRITE — entire request cached   │
+           └──────────────────────────────────────┘
+
+  Turn 2: [system] + [tools] + [user_1] + [asst_1] + [user_2 CC]
+           ┌────────────────────────────┐  ┌────────────────────┐
+           │ CACHE READ — prefix match  │  │ NEW — process + CC │
+           │ system+tools+user_1 same   │  │ extends the cache  │
+           └────────────────────────────┘  └────────────────────┘
+
+  Turn 3: [system] + [tools] + [user_1] + [asst_1] + [user_2] + [asst_2] + [user_3 CC]
+           ┌──────────────────────────────────────────────────────┐  ┌──────────────────┐
+           │ CACHE READ — everything up to user_2 matches cache   │  │ NEW — asst_2 +   │
+           │                                                      │  │ user_3 + CC      │
+           └──────────────────────────────────────────────────────┘  └──────────────────┘
+
+On each turn:
+  1. The server hashes from byte 0 and matches against cache
+  2. Everything before the NEW content matches — read from cache
+  3. Only the NEW content (latest assistant response + latest
+     user message) is processed fresh
+  4. The CC marker on the latest message EXTENDS the cache to
+     include everything up to here
+
+The cache grows. By turn 10, turns 1-9 are all cached. The
+server only processes the latest exchange.
+
+WHY THIS WORKS: IDENTICAL PREFIXES
+The key insight: message content never changes once sent. Turn 1's
+user message is the same on turn 1 as it is on turn 5. The
+assistant's response from turn 1 is the same on turn 5. So the
+prefix — everything before the latest exchange — is always an
+exact match.
+
+We move the CC marker forward each turn (strip it from prior
+messages, add it to the latest). But the CONTENT of those prior
+messages is unchanged. The server sees the same prefix and reads
+it from cache. Only the latest exchange is new.
+
+THE HASH-SECTION ANALOGY
+Think of each CC marker as defining a hash section. The server
+hashes each section independently:
+
+  ┌─────────────┬──────────┬───────────────────────┬────────────┐
+  │ system hash  │ tools    │ conversation hash     │ new content│
+  │ (CC marker)  │ (CC)     │ (CC on latest msg)    │            │
+  └─────────────┴──────────┴───────────────────────┴────────────┘
+        ↓              ↓              ↓
+    cache hit?     cache hit?     cache hit?
+        ↓              ↓              ↓
+      READ           READ           READ or WRITE
+
+If the hash matches → read from cache (0.1x).
+If the hash doesn't match → process and write to cache (1.25x).
+New content after the last CC marker → always processed (1x).
+
+This is why the 4-block limit matters: each CC marker creates a
+hash section. More sections = more flexibility but the API caps
+it at 4.
+
+The cache is keyed on exact content — if you change one character
+in the system prompt, its hash changes, and it's a cache miss.
+This is also why you strip CC from old messages: you're not
+changing their content, just removing the marker. The hash of
+the CONTENT is unchanged, so the prefix still matches.
 
 CACHING TOOL DEFINITIONS
 Tool definitions (the tools array) are sent to the API every
