@@ -409,12 +409,37 @@ WHY THIS MATTERS
   3. SCALE MULTIPLIER: One agent is cheap. A hundred concurrent
      agents running 30 turns each on Opus without caching is not.
 
+A NOTE ON BOUNCERS AND TOKENOMICS
+The bouncer pattern (Demos 10 and 16) is first and foremost a
+semantic gate — it validates inputs before they reach the tool.
+But it has a tokenomics side effect worth noting.
+
+When Pydantic rejects an invalid tool call BEFORE execution,
+that's a call that never produces an error message, never
+triggers a retry, and never adds noise to the context window.
+The bouncer catches "server_id SRV-9999 not found" in code,
+returns a clean validation error, and the model moves on.
+
+Without the bouncer (Demo 11, Context Pollution), the same
+invalid call produces a raw stack trace (400+ tokens), the
+model retries, gets another stack trace, retries again. Each
+retry adds tokens to the context. The cost grows quadratically.
+
+So all context window management is tokenomics to some extent.
+The bouncer is a security control first, but the cost savings
+are a real and measurable side effect. Security and efficiency
+aren't separate concerns — they're the same architecture.
+
 CONNECTION TO OTHER DEMOS
   - Demo 08 (Thinking Aloud): shows HOW thinking works — this demo
     shows what it COSTS
+  - Demo 10 (Scoped Tool): bouncer validates inputs — semantic gate
+    first, tokenomics side effect second
   - Demo 11 (Context Pollution): both are about cost in multi-turn
     loops. Pollution adds noise tokens; thinking adds reasoning tokens.
     Both grow quadratically.
+  - Demo 12 (Error Translation): clean errors = fewer wasted tokens.
+    Translation is both a UX and a cost control.
   - Demo 09 (Plan Mode): plan mode keeps agent loops short, which
     also keeps costs down
 
