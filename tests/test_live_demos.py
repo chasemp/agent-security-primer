@@ -24,6 +24,7 @@ DEMO_04 = Path(__file__).parent.parent / "demos" / "04_temperature"
 DEMO_05 = Path(__file__).parent.parent / "demos" / "05_thinking_aloud"
 DEMO_06 = Path(__file__).parent.parent / "demos" / "06_scoped_tool"
 DEMO_07 = Path(__file__).parent.parent / "demos" / "07_context_pollution"
+DEMO_08 = Path(__file__).parent.parent / "demos" / "08_error_translation"
 
 
 def _get_api_key():
@@ -341,4 +342,29 @@ class TestDemo07ContextPollution:
         # Cost should be meaningfully higher than a clean 2-turn interaction
         assert result["total_input_tokens"] > 3000, (
             f"Expected context pollution to drive up input tokens, got {result['total_input_tokens']}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Demo 8: Error Translation — clean errors, fewer tokens
+# ---------------------------------------------------------------------------
+
+class TestDemo08ErrorTranslation:
+    """With translated errors, the model should make a clean decision
+    faster and with fewer tokens than Demo 7's raw errors."""
+
+    @pytest.mark.live
+    def test_fewer_tokens_than_raw_errors(self) -> None:
+        from agent import run_agent, load_tools_module
+
+        system = (DEMO_08 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_08 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_08 / "tools.py"))
+
+        result = run_agent(system, task, tools, api_key=_get_api_key(), max_turns=5)
+
+        # With clean errors, the model should decide faster
+        # (fewer turns or fewer tokens than Demo 7)
+        assert result["total_input_tokens"] < 5000, (
+            f"Translated errors should keep tokens lower, got {result['total_input_tokens']}"
         )

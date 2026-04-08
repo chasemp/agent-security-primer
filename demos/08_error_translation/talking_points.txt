@@ -1,0 +1,94 @@
+DEMO 8: ERROR TRANSLATION — The Bouncer Cleans Up Outputs
+
+KEY TAKEAWAY
+Error translation is not error handling. It's context curation. You're
+not fixing the error — you're controlling what the model sees. One
+wrapper function is the difference between context pollution and a
+clean decision.
+
+THE BOUNCER HAS TWO DOORS
+
+Demo 6 showed the bouncer on the way IN: Pydantic validates tool
+inputs before any action is taken.
+
+This demo shows the bouncer on the way OUT: errors are translated
+before they re-enter the context window.
+
+              ┌─────────────────┐
+  Model       │   YOUR CODE     │     External
+  context  →  │                 │  →  service
+              │  IN:  Pydantic  │
+              │  OUT: Translate │
+  context  ←  │                 │  ←  raw result
+  (clean)     └─────────────────┘     (messy)
+
+Both directions matter. Demo 7 showed what happens without either.
+
+THE ONE-FUNCTION FIX
+
+The entire difference between Demo 7 and Demo 8 is this function:
+
+  def _translate_error(raw_error, server_id):
+      return json.dumps({
+          "error": "service_unavailable",
+          "server_id": server_id,
+          "status": "management API is down",
+          "retry": False,
+          "action": "escalate to infrastructure team",
+      })
+
+That's it. Same broken service. Same failure. But the model gets
+a 120-character structured message instead of a 500-character stack
+trace. The model reads "service unavailable, don't retry, escalate"
+and makes a clean decision in one turn.
+
+THE DEMO FLOW — SIDE BY SIDE
+
+  # "First, Demo 7 — raw errors (the audience already saw this)"
+  cat demos/07_context_pollution/task.txt | python agent.py \
+      demos/07_context_pollution/system_prompt.txt \
+      --tools demos/07_context_pollution/tools.py
+
+  # "Now the same task with translated errors"
+  cat demos/08_error_translation/task.txt | python agent.py \
+      demos/08_error_translation/system_prompt.txt \
+      --tools demos/08_error_translation/tools.py
+
+  Compare:
+    Demo 7: 4 turns, ~6,800 input tokens, $0.009, FAILURE
+    Demo 8: 2 turns, ~2,000 input tokens, $0.003, clean report
+
+  Same broken service. Same task. The only difference is one
+  translation function.
+
+WHAT MAKES A GOOD ERROR TRANSLATION
+  1. STRUCTURED: JSON, not prose. The model parses structure better.
+  2. ACTIONABLE: "retry: false, action: escalate" tells the model
+     what to do next. The raw trace doesn't.
+  3. SHORT: 100-200 chars, not 500+. Every character is a token
+     the model will re-read on every subsequent turn.
+  4. NO INTERNALS: No file paths, no line numbers, no class names.
+     The model can't act on "/opt/services/infra-agent/src/handlers/
+     server_ops.py line 247" — it just pollutes the context.
+
+Q&A PREPARATION
+
+Q: "Aren't we hiding useful information from the model?"
+A: We're hiding NOISE. The model can't SSH into the server and fix
+   the connection pool. It doesn't need the stack trace. It needs to
+   know: what failed, is it retryable, what should it do instead.
+   That's what the translation provides.
+
+Q: "What if the model needs the raw error for debugging?"
+A: Log the raw error for humans. Translate it for the model. These
+   are different audiences with different needs. The ops team reads
+   the stack trace in the log. The model reads the translation in
+   the context.
+
+Q: "How much does this actually save?"
+A: In our demo, raw errors cost ~$0.009 for a failed task.
+   Translated errors cost ~$0.003 for the same task. That's 3x.
+   At scale with many concurrent agents and retries, this is the
+   difference between a manageable bill and denial-of-wallet.
+
+COST: ~$0.003 per run (1-2 turns, clean decision)

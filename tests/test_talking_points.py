@@ -20,6 +20,7 @@ DEMO_DIRS = [
     "05_thinking_aloud",
     "06_scoped_tool",
     "07_context_pollution",
+    "08_error_translation",
 ]
 
 
