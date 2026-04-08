@@ -23,6 +23,7 @@ DEMO_03 = Path(__file__).parent.parent / "demos" / "03_math"
 DEMO_04 = Path(__file__).parent.parent / "demos" / "04_temperature"
 DEMO_05 = Path(__file__).parent.parent / "demos" / "05_thinking_aloud"
 DEMO_06 = Path(__file__).parent.parent / "demos" / "06_scoped_tool"
+DEMO_07 = Path(__file__).parent.parent / "demos" / "07_context_pollution"
 
 
 def _get_api_key():
@@ -312,3 +313,32 @@ class TestDemo06ScopedTool:
         # restart_server should succeed (no errors)
         restart_steps = [s for s in result["steps"] if s["tool"] == "restart_server"]
         assert any(s["error"] is None for s in restart_steps), "At least one restart should succeed"
+
+
+# ---------------------------------------------------------------------------
+# Demo 7: Context Pollution — broken tool, retries, cost climbs
+# ---------------------------------------------------------------------------
+
+class TestDemo07ContextPollution:
+    """The agent should retry the broken tool multiple times, burning
+    tokens on each attempt. The cost should be noticeably higher than
+    the scoped tool demo because of the retry loop."""
+
+    @pytest.mark.live
+    def test_agent_retries_and_burns_tokens(self) -> None:
+        from agent import run_agent, load_tools_module
+
+        system = (DEMO_07 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_07 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_07 / "tools.py"))
+
+        result = run_agent(system, task, tools, api_key=_get_api_key(), max_turns=5)
+
+        # Should have multiple retry attempts
+        assert result["turns"] >= 3, (
+            f"Expected at least 3 turns of retrying, got {result['turns']}"
+        )
+        # Cost should be meaningfully higher than a clean 2-turn interaction
+        assert result["total_input_tokens"] > 3000, (
+            f"Expected context pollution to drive up input tokens, got {result['total_input_tokens']}"
+        )

@@ -1,0 +1,101 @@
+DEMO 7: CONTEXT POLLUTION — What Happens Without a Bouncer
+
+KEY TAKEAWAY
+When raw errors feed back into the context window unchecked, the
+signal-to-noise ratio drops with every retry. The model reasons on
+top of garbage. The context rots. The cost climbs. Nothing gets done.
+Your agent is a credit card attached to a while loop.
+
+BACKGROUND
+Every message in the agent loop gets appended to the context window.
+When a tool fails and returns a raw stack trace (500+ characters of
+Python traceback), that entire dump goes into the context. The model
+reads it, decides to retry, gets the same dump again. Now there are
+two copies. Then three. Each turn, the model's input tokens grow
+because it's reasoning over all previous attempts.
+
+This is context pollution: the context window fills with noise that
+doesn't help the model make better decisions. It's the opposite of
+Demo 6, where scoped tools return clean, structured responses.
+
+THE MECHANISM
+  Turn 1: task (50 tokens) + error (400 tokens)       = 450 tokens in context
+  Turn 2: task + error + retry + error                 = 900 tokens
+  Turn 3: task + error + retry + error + retry + error = 1350 tokens
+  Turn 4: ...                                          = 1800 tokens
+  Turn 5: ...                                          = 2250 tokens
+
+Each turn the model pays for ALL previous turns' content. So cost
+doesn't grow linearly — it grows quadratically. Five retries don't
+cost 5x the first call. They cost ~15x, because the model re-reads
+the entire growing context every turn.
+
+WHY THIS IS A SECURITY ISSUE
+  1. DENIAL OF WALLET: An attacker who can trigger a tool failure
+     (malformed input, network partition, dependency outage) causes
+     your agent to burn tokens retrying. At scale, this is a
+     financial attack.
+
+  2. CONTEXT ROT: The model's reasoning quality degrades as noise
+     accumulates. It may start hallucinating fixes, fabricating
+     error codes, or attempting increasingly creative (wrong)
+     approaches because the signal is buried in garbage.
+
+  3. NO NATURAL STOP: Without max_turns or a circuit breaker, the
+     agent retries until it hits the context window limit or your
+     budget runs out. The model has no incentive to stop — it's
+     trying to be helpful.
+
+THE DEMO FLOW
+  # "Here's the broken tool — notice: no Pydantic, no validation"
+  cat demos/07_context_pollution/tools.py
+
+  # "Same task as Demo 6, but now the tool is broken"
+  cat demos/07_context_pollution/task.txt | python agent.py \
+      demos/07_context_pollution/system_prompt.txt \
+      --tools demos/07_context_pollution/tools.py
+
+  Watch:
+    - Turn 1: model calls restart_server → raw stack trace
+    - Turn 2: model retries with different params → same trace
+    - Turn 3: model tries something creative → same trace
+    - Tokens climbing with each turn
+    - Cost climbing with each turn
+
+  Compare to Demo 6:
+    Demo 6: 3 turns, ~$0.004, clean success
+    Demo 7: 5 turns, ~$0.015+, nothing accomplished
+
+THE DEFENSES (one-liners)
+  1. max_turns: agent.py already has this. Set it low.
+  2. Error translation: don't feed raw traces to the model.
+     Translate to "Service unavailable, retry in 5 minutes."
+  3. Circuit breaker: after N consecutive failures on the same
+     tool, stop retrying and report the failure.
+
+CONNECTION TO OTHER DEMOS
+  - Demo 6 (Scoped Tool): the RIGHT way — clean tools, clean errors
+  - Demo 2 (Hallucination): context pollution makes hallucination
+    WORSE because the model reasons on noise
+  - Demo 3 (Math): same principle — more noise = worse reasoning
+
+Q&A PREPARATION
+
+Q: "Isn't max_turns enough?"
+A: It stops the bleeding but doesn't fix the underlying problem.
+   Even 3 turns of raw stack traces is 3 turns of wasted context.
+   Error translation prevents the pollution in the first place.
+
+Q: "How much does this actually cost in production?"
+A: Depends on the error size and model. A 500-token error retried
+   10 times on Sonnet costs ~$0.15 in wasted tokens. At scale with
+   many concurrent agents, that adds up fast. The cost is quadratic
+   in the number of retries, not linear.
+
+Q: "Can the model learn to stop retrying?"
+A: Sometimes, especially with system prompt instructions. But the
+   model's default behavior is to try to complete the task. That's
+   what it's trained to do. Programmatic controls (max_turns,
+   circuit breakers) are more reliable than hoping the model gives up.
+
+COST: ~$0.01-0.02 per run (5 turns of retrying)
