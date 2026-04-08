@@ -1,0 +1,9 @@
+Classify this candidate feedback into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Technical Skills
+- Leadership
+- Culture Fit
+- Communication
+- Domain Expertise

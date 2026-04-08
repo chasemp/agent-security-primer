@@ -1,0 +1,6 @@
+He gave a great technical presentation about his work leading
+the platform migration at his previous company. He managed 8
+engineers through the project and communicated the technical
+trade-offs clearly to non-technical stakeholders. What struck
+me most was how he described building consensus with the VP of
+Engineering who initially opposed the migration approach.

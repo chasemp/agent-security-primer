@@ -1,0 +1,9 @@
+Classify this contract clause into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Liability
+- Intellectual Property
+- Termination
+- Payment Terms
+- Confidentiality

@@ -1,0 +1,36 @@
+Classify this candidate feedback into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Technical Skills
+- Leadership
+- Culture Fit
+- Communication
+- Domain Expertise
+
+Here are examples of correct classifications:
+
+FEEDBACK: "She solved the system design problem efficiently and
+chose appropriate data structures. Good grasp of trade-offs
+between consistency and availability."
+CATEGORY: Technical Skills
+
+FEEDBACK: "He managed a team of 12 across two time zones and
+kept the project on schedule despite losing two engineers
+mid-sprint. Good at delegation and shielding the team."
+CATEGORY: Leadership
+
+FEEDBACK: "Great energy in the interview. Asked thoughtful
+questions about our team rituals. But she mentioned preferring
+to work independently and we're a very collaborative team."
+CATEGORY: Culture Fit
+
+FEEDBACK: "He has 8 years in fintech, including 3 years
+building payment processing systems. Deep understanding of
+PCI compliance and regulatory requirements in the EU."
+CATEGORY: Domain Expertise
+
+FEEDBACK: "Her presentation was clear and well-structured.
+She adapted her explanation when I asked her to make it less
+technical. Good at reading the room."
+CATEGORY: Communication

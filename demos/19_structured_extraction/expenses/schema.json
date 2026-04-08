@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "employee": {
+      "type": "string",
+      "description": "Name of the person submitting expenses"
+    },
+    "period": {
+      "type": "string",
+      "description": "Month and year of the expense report"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Total dollar amount claimed"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {"type": "string"},
+          "amount": {"type": "number"},
+          "category": {"type": "string"}
+        },
+        "required": ["description", "amount"]
+      }
+    },
+    "policy_exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {"type": "string"},
+          "issue": {"type": "string"},
+          "resolution": {"type": "string"}
+        },
+        "required": ["item", "issue"]
+      }
+    },
+    "action_required": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "required": ["employee", "period", "total_amount", "line_items"]
+}

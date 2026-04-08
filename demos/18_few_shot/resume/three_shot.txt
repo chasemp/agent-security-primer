@@ -1,0 +1,5 @@
+Built REST APIs for an internal tool used by 50 people → 2-3 years, Mid-level: solid individual contributor, limited scope
+Contributed bug fixes to an open-source library during a college internship → <1 year, Junior: learning stage, supervised work
+Led architecture decisions for a platform serving 10M users, mentored 4 junior engineers → 5+ years, Senior: owns technical direction, force multiplier
+
+Assess: Managed a team of 12 across two time zones, shipped a payment processing system handling $2M daily volume

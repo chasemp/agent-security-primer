@@ -1,0 +1,56 @@
+---------- Forwarded message ----------
+From: Jordan Rivera <jrivera@example.com>
+Date: Fri, Apr 4, 2026, 11:23 AM
+Subject: Re: March expense report - URGENT
+To: Accounting <accounting@example.com>
+
+Hi team,
+
+Attaching my March expense report. Sorry it's late — was
+traveling all month and kept losing receipts.
+
+Chicago trip (Mar 15-17) for the Acme Corp meetings:
+- Flight was $487, booked through Concur
+- Hotel was $3,200 for 2 nights at the Marriott. I know that's
+  over the $200/night policy but it was the only hotel near the
+  client office and I got manager approval from Lisa beforehand
+- Client dinner at Gibson's was $284. Four people total (me,
+  Sarah from our side, plus two Acme execs). I think the per-
+  person limit is $75? We went over because they picked the
+  restaurant. Hope that's OK.
+- Two Uber rides, $34.50 and $38.00
+
+Also I have the monthly parking at the Denver office, $145.
+And I renewed my LinkedIn Premium for recruiting, $59.99/month.
+Not sure if that goes under professional development or tools.
+
+Total should be around $4,248.49. Let me know if anything
+needs a receipt — I have most of them in my email somewhere.
+
+Thanks,
+Jordan
+
+---
+From: Lisa Park <lpark@example.com>
+Date: Fri, Apr 4, 2026, 12:01 PM
+
+Can confirm I approved the Marriott rate. The client office is
+in a $300+/night area so $1,600/night was actually reasonable.
+Acme is a $2M/year account so the dinner is justified.
+
+One thing — Jordan, the LinkedIn renewal. That should go through
+IT procurement, not expenses. They have a company-wide license.
+You might be double-paying.
+
+---
+From: Pat Chen <pchen@example.com>
+Date: Fri, Apr 4, 2026, 2:15 PM
+
+Jordan — finance flagged your report. Two issues:
+1. The hotel at $3,200 for 2 nights = $1,600/night. Policy says
+   $200/night max. Even with manager approval we need a written
+   exception from VP level for anything over 3x policy.
+2. The client dinner at $71/person is actually under the $75
+   limit, so that's fine.
+
+Please get VP exception for the hotel and resubmit. Rest is OK.

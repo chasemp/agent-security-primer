@@ -1,0 +1,3 @@
+She built a distributed caching layer that reduced API latency
+by 60%. Strong grasp of Redis internals and cache invalidation
+strategies. Her code review was thorough and well-reasoned.

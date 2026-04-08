@@ -1,9 +1,8 @@
 """Tests for Demo 18 (Few-Shot Pattern Learning) data files.
 
 This demo shows that giving the model examples improves its predictions.
-The audience watches accuracy improve from zero-shot (ambiguous) to
-three-shot (nails it), then sees the model learn a completely new
-transformation (fiscal quarters) from examples alone.
+Four audience variants: technical, expenses, contract, resume.
+Each has zero/one/three-shot progression and a transform file.
 
 Uses ask_claude.py — single-turn, stdin piped input.
 """
@@ -13,31 +12,36 @@ from pathlib import Path
 import pytest
 
 DEMO_DIR = Path(__file__).parent.parent / "demos" / "18_few_shot"
+VARIANTS = ["technical", "expenses", "contract", "resume"]
 
 
 # ---------------------------------------------------------------------------
-# File structure
+# File structure — all variants
 # ---------------------------------------------------------------------------
 
 class TestFileStructure:
-    def test_system_prompt_exists(self) -> None:
-        assert (DEMO_DIR / "system_prompt.txt").exists()
-
-    def test_zero_shot_exists(self) -> None:
-        assert (DEMO_DIR / "zero_shot.txt").exists()
-
-    def test_one_shot_exists(self) -> None:
-        assert (DEMO_DIR / "one_shot.txt").exists()
-
-    def test_three_shot_exists(self) -> None:
-        assert (DEMO_DIR / "three_shot.txt").exists()
-
-    def test_transform_exists(self) -> None:
-        """A different transformation learned from examples alone."""
-        assert (DEMO_DIR / "transform.txt").exists()
-
     def test_talking_points_exists(self) -> None:
         assert (DEMO_DIR / "talking_points.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_system_prompt_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "system_prompt.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_zero_shot_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "zero_shot.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_one_shot_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "one_shot.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_three_shot_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "three_shot.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_transform_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "transform.txt").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -45,36 +49,32 @@ class TestFileStructure:
 # ---------------------------------------------------------------------------
 
 class TestShotProgression:
-    """Each file adds more examples. The test question should be the same
-    across all variants so the audience sees the ONLY variable is context."""
-
-    def test_system_prompt_is_minimal(self) -> None:
-        """Simple demos use short system prompts — no over-engineering."""
-        content = (DEMO_DIR / "system_prompt.txt").read_text()
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_system_prompt_is_minimal(self, variant: str) -> None:
+        content = (DEMO_DIR / variant / "system_prompt.txt").read_text()
         assert len(content.strip()) < 200
 
-    def test_zero_shot_has_no_examples(self) -> None:
-        content = (DEMO_DIR / "zero_shot.txt").read_text()
-        assert "example" not in content.lower() or content.count("→") == 0
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_zero_shot_has_no_examples(self, variant: str) -> None:
+        content = (DEMO_DIR / variant / "zero_shot.txt").read_text()
+        assert content.count("→") == 0
 
-    def test_one_shot_has_one_example(self) -> None:
-        content = (DEMO_DIR / "one_shot.txt").read_text()
-        # Should contain exactly one example line with → marker
-        arrows = content.count("→")
-        assert arrows == 1, f"Expected 1 example (→), got {arrows}"
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_one_shot_has_one_example(self, variant: str) -> None:
+        content = (DEMO_DIR / variant / "one_shot.txt").read_text()
+        assert content.count("→") == 1
 
-    def test_three_shot_has_three_examples(self) -> None:
-        content = (DEMO_DIR / "three_shot.txt").read_text()
-        arrows = content.count("→")
-        assert arrows == 3, f"Expected 3 examples (→), got {arrows}"
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_three_shot_has_three_examples(self, variant: str) -> None:
+        content = (DEMO_DIR / variant / "three_shot.txt").read_text()
+        assert content.count("→") == 3
 
-    def test_all_variants_share_test_question(self) -> None:
-        """The test input should appear in all shot variants."""
-        zero = (DEMO_DIR / "zero_shot.txt").read_text()
-        one = (DEMO_DIR / "one_shot.txt").read_text()
-        three = (DEMO_DIR / "three_shot.txt").read_text()
-        # All should end with the same conversion request
-        # Extract last non-empty line from each
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_all_variants_share_test_question(self, variant: str) -> None:
+        """The test input should be the same across zero/one/three shot."""
+        zero = (DEMO_DIR / variant / "zero_shot.txt").read_text()
+        one = (DEMO_DIR / variant / "one_shot.txt").read_text()
+        three = (DEMO_DIR / variant / "three_shot.txt").read_text()
         zero_last = [l for l in zero.strip().splitlines() if l.strip()][-1]
         one_last = [l for l in one.strip().splitlines() if l.strip()][-1]
         three_last = [l for l in three.strip().splitlines() if l.strip()][-1]
@@ -82,25 +82,19 @@ class TestShotProgression:
 
 
 # ---------------------------------------------------------------------------
-# Transform: a completely different transformation
+# Transform: different transformation per variant
 # ---------------------------------------------------------------------------
 
 class TestTransform:
-    """The transform file uses a DIFFERENT transformation to show the
-    model learns new rules from examples, not just memorized formats."""
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_transform_has_examples(self, variant: str) -> None:
+        content = (DEMO_DIR / variant / "transform.txt").read_text()
+        assert content.count("→") >= 2
 
-    def test_transform_has_examples(self) -> None:
-        content = (DEMO_DIR / "transform.txt").read_text()
-        arrows = content.count("→")
-        assert arrows >= 2, f"Transform should have ≥2 examples, got {arrows}"
-
-    def test_transform_is_different_from_main(self) -> None:
-        """The transformation in transform.txt should be different from
-        the one in three_shot.txt."""
-        three = (DEMO_DIR / "three_shot.txt").read_text()
-        transform = (DEMO_DIR / "transform.txt").read_text()
-        # The example outputs should look different
-        # Extract the right side of the first → in each
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_transform_is_different_from_main(self, variant: str) -> None:
+        three = (DEMO_DIR / variant / "three_shot.txt").read_text()
+        transform = (DEMO_DIR / variant / "transform.txt").read_text()
         three_output = three.split("→")[1].split("\n")[0].strip()
         transform_output = transform.split("→")[1].split("\n")[0].strip()
         assert three_output != transform_output

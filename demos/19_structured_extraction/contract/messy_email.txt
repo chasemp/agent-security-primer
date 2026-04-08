@@ -1,0 +1,56 @@
+---------- Forwarded message ----------
+From: Rachel Kim <rkim@example.com>
+Date: Wed, Apr 2, 2026, 3:15 PM
+Subject: Re: Vendor agreement - CloudScale Inc - REVIEW NEEDED
+To: Legal <legal@example.com>
+
+Legal team,
+
+Need eyes on the CloudScale vendor agreement before Friday.
+We're trying to close this by April 11 so engineering can
+start the integration during sprint 14.
+
+Main concerns I spotted:
+
+The liability cap is set at "total fees paid in the preceding
+12 months." That's fine for steady-state but we're planning
+to ramp from $50K/month to $200K/month by Q3. So the cap
+would only cover $600K even though we're committing to $2.4M
+annually. That feels low for a data processing vendor.
+
+The data processing addendum says they can use "anonymized
+aggregate data" for "service improvement." Our privacy counsel
+flagged this — does "anonymized" meet our standard? They're
+processing PII for us.
+
+Non-compete clause says we can't use a "substantially similar
+service" for 12 months after termination. That's basically
+saying we can't switch cloud providers for a year. Way too
+broad.
+
+Auto-renewal with 60-day written notice. Our standard is 90
+days. Someone will forget and we'll be locked in another year.
+
+The good news: their SLA is 99.95% with service credits at
+10x the downtime cost. That's better than most vendors.
+
+-Rachel
+
+---
+From: Tom Bailey <tbailey@example.com>
+Date: Wed, Apr 2, 2026, 4:30 PM
+
+Rachel — agree on all points. My additions:
+
+The indemnification clause is one-sided. They indemnify us
+for IP infringement but we indemnify them for "any claims
+arising from our use of the service." That's too broad —
+should be limited to our breach of the agreement, not any
+use.
+
+Also the governing law is Delaware. We're incorporated in
+California. Prefer CA but Delaware is acceptable if they
+won't move on it.
+
+I'll draft redlines by Thursday. Target: close by April 11
+as planned, but NOT if the non-compete stays as written.

@@ -1,0 +1,58 @@
+---------- Forwarded message ----------
+From: Alex Nguyen <anguyen@example.com>
+Date: Thu, Apr 3, 2026, 9:45 AM
+Subject: Re: Re: Senior PM candidate - Maya Johnson
+To: Hiring Committee <hiring-pm@example.com>
+
+Team,
+
+Quick debrief on Maya Johnson's onsite yesterday. She's the
+one from Stripe who managed the international expansion of
+their invoicing product.
+
+My take: strong PM fundamentals. She walked through the Stripe
+launch and I was impressed by how she handled the regulatory
+complexity — 6 countries, different payment regulations, and
+she shipped on time. Her roadmap prioritization framework was
+solid (she uses a modified RICE scoring). Communicated clearly
+with me, no buzzword soup.
+
+Concerns: she's been at Stripe for 7 years. Only PM experience
+is big-company. We're 200 people. I asked how she'd handle
+not having a dedicated data team and she said "I'd learn SQL"
+which... OK but that's not really the point. Scrappiness is
+the gap.
+
+She wants $195K base. Our range for Senior PM is $170-190K.
+She's above range but not unreasonably so given her background.
+
+-Alex
+
+---
+From: Priya Sharma <psharma@example.com>
+Date: Thu, Apr 3, 2026, 11:20 AM
+
+I did the product sense interview. She crushed it. Gave her
+the "design a feature for elderly users" prompt and she
+immediately asked about accessibility requirements before
+sketching anything. First candidate in weeks who did that.
+
+Her weakness: she defaulted to Stripe-scale solutions twice.
+I pushed back and she adjusted, but the instinct is big-co.
+
+I'd move her forward. The scrappiness concern is coachable.
+The product instincts are not — you either have them or you
+don't, and she has them.
+
+---
+From: James Cooper <jcooper@example.com>
+Date: Thu, Apr 3, 2026, 2:00 PM
+
+Hiring manager perspective: I want to extend an offer. She's
+the strongest candidate in this cycle. Timeline: I need to
+move fast — she told Alex she has another offer from Notion
+with a Friday Apr 11 deadline.
+
+Comp: I'll push for $188K to stay in range. If we need to go
+to $192K to close, I'll get VP approval. Can we schedule a
+hiring committee vote by Monday Apr 7?

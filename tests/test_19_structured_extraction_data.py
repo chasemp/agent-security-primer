@@ -1,9 +1,7 @@
 """Tests for Demo 19 (Structured Extraction) data files.
 
-This demo shows the model extracting structured data from messy
-unstructured input. Demonstrates with and without schema enforcement
-(--schema flag). The schema narrows the prediction menu — same
-principle as constrained decoding from the inference pipeline.
+Four audience variants: technical, expenses, contract, resume.
+Each has a messy email thread, a schema, and a system prompt.
 
 Uses ask_claude.py with --schema for structured output.
 """
@@ -14,24 +12,28 @@ from pathlib import Path
 import pytest
 
 DEMO_DIR = Path(__file__).parent.parent / "demos" / "19_structured_extraction"
+VARIANTS = ["technical", "expenses", "contract", "resume"]
 
 
 # ---------------------------------------------------------------------------
-# File structure
+# File structure — all variants
 # ---------------------------------------------------------------------------
 
 class TestFileStructure:
-    def test_system_prompt_exists(self) -> None:
-        assert (DEMO_DIR / "system_prompt.txt").exists()
-
-    def test_messy_input_exists(self) -> None:
-        assert (DEMO_DIR / "messy_email.txt").exists()
-
-    def test_schema_exists(self) -> None:
-        assert (DEMO_DIR / "schema.json").exists()
-
     def test_talking_points_exists(self) -> None:
         assert (DEMO_DIR / "talking_points.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_system_prompt_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "system_prompt.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_messy_input_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "messy_email.txt").exists()
+
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_schema_exists(self, variant: str) -> None:
+        assert (DEMO_DIR / variant / "schema.json").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -39,18 +41,17 @@ class TestFileStructure:
 # ---------------------------------------------------------------------------
 
 class TestMessyInput:
-    def test_messy_email_has_substance(self) -> None:
-        """Should be a realistic messy email with extractable data."""
-        content = (DEMO_DIR / "messy_email.txt").read_text()
-        assert len(content) > 200, "Email should be substantial enough to extract from"
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_messy_email_has_substance(self, variant: str) -> None:
+        content = (DEMO_DIR / variant / "messy_email.txt").read_text()
+        assert len(content) > 200
 
-    def test_messy_email_has_extractable_fields(self) -> None:
-        """The email should contain data that matches the schema fields."""
-        content = (DEMO_DIR / "messy_email.txt").read_text().lower()
-        # Should have names, dates, action items — typical extractable data
-        has_names = any(word in content for word in ["meeting", "team", "project"])
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_messy_email_has_extractable_fields(self, variant: str) -> None:
+        content = (DEMO_DIR / variant / "messy_email.txt").read_text()
         has_dates = any(char.isdigit() for char in content)
-        assert has_names and has_dates
+        has_names = "@" in content or "From:" in content
+        assert has_dates and has_names
 
 
 # ---------------------------------------------------------------------------
@@ -58,22 +59,25 @@ class TestMessyInput:
 # ---------------------------------------------------------------------------
 
 class TestSchema:
-    def test_schema_is_valid_json(self) -> None:
-        content = (DEMO_DIR / "schema.json").read_text()
-        schema = json.loads(content)
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_schema_is_valid_json(self, variant: str) -> None:
+        schema = json.loads((DEMO_DIR / variant / "schema.json").read_text())
         assert isinstance(schema, dict)
 
-    def test_schema_has_object_type(self) -> None:
-        schema = json.loads((DEMO_DIR / "schema.json").read_text())
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_schema_has_object_type(self, variant: str) -> None:
+        schema = json.loads((DEMO_DIR / variant / "schema.json").read_text())
         assert schema["type"] == "object"
 
-    def test_schema_has_properties(self) -> None:
-        schema = json.loads((DEMO_DIR / "schema.json").read_text())
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_schema_has_properties(self, variant: str) -> None:
+        schema = json.loads((DEMO_DIR / variant / "schema.json").read_text())
         assert "properties" in schema
-        assert len(schema["properties"]) >= 3, "Schema should extract multiple fields"
+        assert len(schema["properties"]) >= 3
 
-    def test_schema_has_required_fields(self) -> None:
-        schema = json.loads((DEMO_DIR / "schema.json").read_text())
+    @pytest.mark.parametrize("variant", VARIANTS)
+    def test_schema_has_required_fields(self, variant: str) -> None:
+        schema = json.loads((DEMO_DIR / variant / "schema.json").read_text())
         assert "required" in schema
         assert len(schema["required"]) >= 2
 

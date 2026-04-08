@@ -1,0 +1,33 @@
+Classify this contract clause into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Liability
+- Intellectual Property
+- Termination
+- Payment Terms
+- Confidentiality
+
+Here are examples of correct classifications:
+
+CLAUSE: "The aggregate liability of either party shall not
+exceed the total fees paid during the preceding 12 months."
+CATEGORY: Liability
+
+CLAUSE: "All inventions, works, and discoveries made during
+the engagement shall be the exclusive property of the Client."
+CATEGORY: Intellectual Property
+
+CLAUSE: "Either party may terminate with 30 days written notice.
+Upon termination, all outstanding invoices become due immediately
+and the service provider must return all confidential materials."
+CATEGORY: Termination
+
+CLAUSE: "The Receiving Party shall not disclose any proprietary
+information for a period of 3 years following termination, and
+shall use such information only for purposes of this agreement."
+CATEGORY: Confidentiality
+
+CLAUSE: "Invoices are due Net 30. Late payments accrue interest
+at 1.5% per month. Client may dispute charges within 15 days."
+CATEGORY: Payment Terms

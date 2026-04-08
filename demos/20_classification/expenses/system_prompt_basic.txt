@@ -1,0 +1,9 @@
+Classify this expense into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Travel
+- Meals & Entertainment
+- Software & Tools
+- Office Supplies
+- Professional Development

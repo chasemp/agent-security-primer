@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "candidate_name": {
+      "type": "string"
+    },
+    "current_company": {
+      "type": "string"
+    },
+    "role_applied": {
+      "type": "string"
+    },
+    "strengths": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "concerns": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "compensation": {
+      "type": "object",
+      "properties": {
+        "candidate_ask": {"type": "string"},
+        "team_range": {"type": "string"},
+        "proposed_offer": {"type": "string"}
+      }
+    },
+    "competing_offer": {
+      "type": "object",
+      "properties": {
+        "company": {"type": "string"},
+        "deadline": {"type": "string", "description": "YYYY-MM-DD"}
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["strong_yes", "yes", "lean_yes", "lean_no", "no", "strong_no"]
+    },
+    "next_steps": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "required": ["candidate_name", "strengths", "concerns", "recommendation", "next_steps"]
+}

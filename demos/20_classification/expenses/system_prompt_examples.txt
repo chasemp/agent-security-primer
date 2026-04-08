@@ -1,0 +1,30 @@
+Classify this expense into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Travel
+- Meals & Entertainment
+- Software & Tools
+- Office Supplies
+- Professional Development
+
+Here are examples of correct classifications:
+
+EXPENSE: "Round-trip flight to Chicago for client meetings, $487"
+CATEGORY: Travel
+
+EXPENSE: "Annual Figma license renewal for the design team, $720"
+CATEGORY: Software & Tools
+
+EXPENSE: "Took the prospective hire to lunch at a restaurant
+to discuss the role. $86 for two people. This was part of the
+recruiting process, not a client meeting."
+CATEGORY: Meals & Entertainment
+
+EXPENSE: "Conference ticket for AWS re:Invent including
+workshop sessions. Travel booked separately."
+CATEGORY: Professional Development
+
+EXPENSE: "Ergonomic keyboard and monitor stand for my desk
+at the Denver office."
+CATEGORY: Office Supplies

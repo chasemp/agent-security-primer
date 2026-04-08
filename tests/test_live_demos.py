@@ -404,3 +404,115 @@ class TestDemo17Tokenomics:
         result = run_agent(system, task, tools, api_key=_get_api_key())
         assert result.get("total_cache_read_tokens", 0) == 0
         assert result.get("total_cache_creation_tokens", 0) == 0
+
+
+# ---------------------------------------------------------------------------
+# Demo 18: Few-Shot — examples improve output consistency
+# ---------------------------------------------------------------------------
+
+class TestDemo18FewShot:
+    @pytest.mark.live
+    def test_three_shot_produces_consistent_format(self) -> None:
+        """With 3 examples, the model should match the demonstrated format."""
+        from ask_claude import send_message
+        d = DEMOS / "18_few_shot" / "technical"
+        system = (d / "system_prompt.txt").read_text().strip()
+        three_shot = (d / "three_shot.txt").read_text().strip()
+        result = send_message(system, three_shot, api_key=_get_api_key(),
+                              temperature=0)
+        text = result["text"].strip()
+        # Three-shot examples use "Mon DDth, YYYY" format
+        # Model should produce something like "Mar 22nd, 2024"
+        assert "Mar" in text or "mar" in text.lower(), (
+            f"Expected abbreviated month 'Mar' in output, got: {text}"
+        )
+        assert "2024" in text
+
+    @pytest.mark.live
+    def test_transform_learns_new_rule(self) -> None:
+        """Model should learn fiscal quarter mapping from examples alone."""
+        from ask_claude import send_message
+        d = DEMOS / "18_few_shot" / "technical"
+        system = (d / "system_prompt.txt").read_text().strip()
+        transform = (d / "transform.txt").read_text().strip()
+        result = send_message(system, transform, api_key=_get_api_key(),
+                              temperature=0)
+        text = result["text"].strip().upper()
+        # 2024-04-08 should map to Q4 FY24 (April = Q4 in Jul-Jun fiscal year)
+        assert "Q" in text and "FY" in text, (
+            f"Expected fiscal quarter format (Qn FYnn) in output, got: {text}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Demo 19: Structured Extraction — schema produces clean JSON
+# ---------------------------------------------------------------------------
+
+class TestDemo19StructuredExtraction:
+    @pytest.mark.live
+    def test_schema_extraction_produces_valid_json(self) -> None:
+        """With --schema, output should be parseable JSON with expected fields."""
+        from ask_claude import send_message
+        d = DEMOS / "19_structured_extraction" / "technical"
+        system = (d / "system_prompt.txt").read_text().strip()
+        email = (d / "messy_email.txt").read_text().strip()
+        schema = json.loads((d / "schema.json").read_text())
+        result = send_message(system, email, api_key=_get_api_key(),
+                              schema=schema)
+        data = json.loads(result["text"])
+        assert "project" in data
+        assert "action_items" in data
+        assert isinstance(data["action_items"], list)
+        assert len(data["action_items"]) >= 2, (
+            "Should extract at least 2 action items from the email thread"
+        )
+
+    @pytest.mark.live
+    def test_extraction_finds_correct_people(self) -> None:
+        """Extracted data should include the real names from the email."""
+        from ask_claude import send_message
+        d = DEMOS / "19_structured_extraction" / "technical"
+        system = (d / "system_prompt.txt").read_text().strip()
+        email = (d / "messy_email.txt").read_text().strip()
+        schema = json.loads((d / "schema.json").read_text())
+        result = send_message(system, email, api_key=_get_api_key(),
+                              schema=schema)
+        text = result["text"].lower()
+        assert "sarah" in text or "chen" in text
+        assert "mike" in text or "torres" in text
+        assert "dana" in text or "park" in text
+
+
+# ---------------------------------------------------------------------------
+# Demo 20: Classification — semantic not keyword
+# ---------------------------------------------------------------------------
+
+class TestDemo20Classification:
+    @pytest.mark.live
+    def test_easy_ticket_classified_correctly(self) -> None:
+        """Easy ticket with aligned keywords should classify as Performance."""
+        from ask_claude import send_message
+        d = DEMOS / "20_classification" / "technical"
+        system = (d / "system_prompt_basic.txt").read_text().strip()
+        ticket = (d / "ticket_easy.txt").read_text().strip()
+        result = send_message(system, ticket, api_key=_get_api_key(),
+                              temperature=0)
+        assert "performance" in result["text"].lower(), (
+            f"Expected 'Performance' classification, got: {result['text']}"
+        )
+
+    @pytest.mark.live
+    def test_tricky_ticket_with_examples_classifies_correctly(self) -> None:
+        """Tricky ticket with misleading keywords + examples should classify
+        as Authentication (root cause), not Billing (surface keywords)."""
+        from ask_claude import send_message
+        d = DEMOS / "20_classification" / "technical"
+        system = (d / "system_prompt_examples.txt").read_text().strip()
+        ticket = (d / "ticket_tricky.txt").read_text().strip()
+        result = send_message(system, ticket, api_key=_get_api_key(),
+                              temperature=0)
+        text = result["text"].lower()
+        assert "authentication" in text, (
+            f"Expected 'Authentication' (root cause) classification "
+            f"with examples, got: {result['text']}"
+        )

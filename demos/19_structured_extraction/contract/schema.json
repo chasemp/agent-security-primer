@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "properties": {
+    "vendor": {
+      "type": "string",
+      "description": "Name of the vendor or counterparty"
+    },
+    "target_close_date": {
+      "type": "string",
+      "description": "Target date to finalize the agreement (YYYY-MM-DD)"
+    },
+    "contract_value": {
+      "type": "string",
+      "description": "Annual contract value or commitment"
+    },
+    "concerns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "clause": {"type": "string"},
+          "issue": {"type": "string"},
+          "risk_level": {"type": "string", "enum": ["low", "medium", "high"]},
+          "raised_by": {"type": "string"}
+        },
+        "required": ["clause", "issue"]
+      }
+    },
+    "positives": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "next_steps": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "required": ["vendor", "target_close_date", "concerns", "next_steps"]
+}
