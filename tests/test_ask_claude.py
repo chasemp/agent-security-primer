@@ -282,6 +282,192 @@ class TestSendMessageWithSchema:
 
 
 # ---------------------------------------------------------------------------
+# send_message with thinking — model reasoning visible
+# ---------------------------------------------------------------------------
+
+class TestSendMessageWithThinking:
+    """When thinking is enabled, the response includes the model's
+    internal reasoning alongside the final answer."""
+
+    def _make_thinking_response(
+        self,
+        thinking_text: str = "Let me reason about this...",
+        response_text: str = "The answer is 42.",
+        input_tokens: int = 200,
+        output_tokens: int = 100,
+    ) -> MagicMock:
+        resp = MagicMock()
+        thinking_block = MagicMock()
+        thinking_block.type = "thinking"
+        thinking_block.thinking = thinking_text
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.text = response_text
+        resp.content = [thinking_block, text_block]
+        resp.usage.input_tokens = input_tokens
+        resp.usage.output_tokens = output_tokens
+        return resp
+
+    def test_passes_thinking_config_to_api(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking=True,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert "thinking" in call_args
+        assert call_args["thinking"]["type"] == "enabled"
+
+    def test_default_thinking_budget_is_5000(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking=True,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["thinking"]["budget_tokens"] == 5000
+
+    def test_custom_thinking_budget(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking=500,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["thinking"]["budget_tokens"] == 500
+
+    def test_large_thinking_budget(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking=10000,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["thinking"]["budget_tokens"] == 10000
+
+    def test_returns_thinking_text(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response(
+                thinking_text="I need to consider the options.",
+                response_text="Option A is best.",
+            )
+
+            result = send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking=True,
+            )
+
+        assert result["thinking"] == "I need to consider the options."
+        assert result["text"] == "Option A is best."
+
+    def test_thinking_is_none_when_disabled(self) -> None:
+        from ask_claude import send_message
+
+        resp = MagicMock()
+        resp.content = [MagicMock(type="text", text="plain response")]
+        resp.usage.input_tokens = 100
+        resp.usage.output_tokens = 20
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = resp
+
+            result = send_message(
+                system_prompt="x", user_content="y", api_key="fake"
+            )
+
+        assert result["thinking"] is None
+
+    def test_no_thinking_config_when_disabled(self) -> None:
+        from ask_claude import send_message
+
+        resp = MagicMock()
+        resp.content = [MagicMock(type="text", text="plain")]
+        resp.usage.input_tokens = 100
+        resp.usage.output_tokens = 10
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = resp
+
+            send_message(
+                system_prompt="x", user_content="y", api_key="fake"
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert "thinking" not in call_args
+
+
+# ---------------------------------------------------------------------------
+# format_result with thinking
+# ---------------------------------------------------------------------------
+
+class TestFormatResultWithThinking:
+    def test_includes_thinking_when_present(self) -> None:
+        from ask_claude import format_result
+
+        output = format_result({
+            "text": "The answer.",
+            "thinking": "Let me reason...",
+            "model": "claude-haiku-4-5",
+            "input_tokens": 200,
+            "output_tokens": 50,
+            "cost_usd": 0.001,
+        })
+        assert "THINKING" in output
+        assert "Let me reason..." in output
+        assert "The answer." in output
+
+    def test_omits_thinking_section_when_none(self) -> None:
+        from ask_claude import format_result
+
+        output = format_result({
+            "text": "The answer.",
+            "thinking": None,
+            "model": "claude-haiku-4-5",
+            "input_tokens": 200,
+            "output_tokens": 50,
+            "cost_usd": 0.001,
+        })
+        assert "THINKING" not in output
+        assert "The answer." in output
+
+
+# ---------------------------------------------------------------------------
 # send_message with temperature
 # ---------------------------------------------------------------------------
 

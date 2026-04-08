@@ -1,0 +1,131 @@
+DEMO 5: THINKING ALOUD — Watch the Model Reason
+
+KEY TAKEAWAY
+The model is not a black box. With extended thinking enabled, you can
+watch its reasoning process in real time. It doesn't "know" things —
+it predicts, reasons about what it has, and fills gaps. Watching this
+process demystifies how the model makes decisions.
+
+BACKGROUND
+When you use an LLM through a chat interface, you see the final
+output. The model appears to "just know" the answer. But internally,
+the model is reasoning through a chain of predictions — considering
+options, evaluating what it knows, and deciding what to output.
+
+Extended thinking makes this visible. The model's internal reasoning
+is returned as a separate block before the final response. The
+audience literally watches the model think.
+
+THE DEMO
+We give the model an urgent task — "restart the database server in
+rack 7" — but no tools and no inventory. The model has to figure
+out what to do with incomplete information. With --thinking enabled,
+the audience watches it:
+
+1. Acknowledge it doesn't have access to inventory systems
+2. Reason about what a server ID might look like
+3. Consider whether to fabricate an ID or say it can't help
+4. Make a decision and justify it
+
+This connects directly to Demo 2 (Hallucination). The audience has
+already seen the model fabricate a server ID. Now they get to watch
+the reasoning that PRODUCED the fabrication.
+
+HOW THE THINKING BUDGET WORKS
+Extended thinking is controlled by a token budget. The API call
+includes a budget_tokens parameter — this is the maximum number of
+tokens the model can spend on its internal reasoning before it has
+to produce a final answer.
+
+  --thinking         Default budget (5000 tokens)
+  --thinking 500     Minimal budget — terse, fast reasoning
+  --thinking 10000   Generous budget — thorough, detailed reasoning
+
+The model may use less than the budget, but it cannot exceed it.
+If the budget is too small, the model's reasoning gets cut short
+and it may jump to conclusions or skip steps. If the budget is
+generous, the model explores more possibilities, considers edge
+cases, and reasons more carefully.
+
+Thinking tokens are billed at the OUTPUT token rate for the model.
+This means thinking is not free — a 10,000-token thinking budget
+on Haiku costs ~$0.05, on Opus ~$0.25. The cost is proportional
+to how much you let the model think.
+
+This is the tradeoff: more thinking = more thorough reasoning =
+higher cost. In production, you tune the budget to the complexity
+of the task. For a simple lookup, 500 tokens of thinking is overkill.
+For a complex analysis with ambiguous inputs, 10,000 tokens may be
+justified.
+
+THE PRESENTER FLOW
+  # "Without thinking — just the output"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt
+
+  # "Now with thinking — watch the reasoning"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking
+
+  # "Minimal budget — the model has to think fast"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking 500
+
+  # "Generous budget — the model reasons thoroughly"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking 10000
+
+  # "Same question, different model — compare how they reason"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking --model claude-sonnet-4-6
+
+THE CROSS-MODEL COMPARISON
+Different models reason differently about the same problem:
+  - Haiku: faster, shorter reasoning chains, may fabricate more readily
+  - Sonnet: longer reasoning, more likely to acknowledge uncertainty
+  - Opus: most thorough reasoning, but also most expensive
+
+The audience sees that model size affects HOW the model reasons,
+not WHETHER it reasons. All models go through the same process —
+larger models just have more capacity for nuance.
+
+Q&A PREPARATION
+
+Q: "Is the thinking block always accurate?"
+A: The thinking block shows the model's actual reasoning process,
+   but it's still prediction-based. The model can reason itself
+   into a wrong conclusion — and you can watch that happen too.
+   That's actually more valuable than only seeing correct reasoning.
+
+Q: "Can I use thinking blocks in production?"
+A: Yes. They're useful for debugging agent behavior, audit trails,
+   and understanding why an agent made a specific decision. The
+   tradeoff is cost — thinking tokens count toward your bill.
+
+Q: "Does thinking make the model more accurate?"
+A: Generally yes — chain-of-thought reasoning improves accuracy
+   on complex tasks. But it doesn't eliminate hallucination (Demo 2)
+   or math errors (Demo 3). It just makes the reasoning path visible
+   so you can see WHERE things went wrong.
+
+Q: "Why can I see the thinking? Isn't that the model's 'private' reasoning?"
+A: There's no privacy here — the model doesn't have internal states
+   you can't access. The thinking block is just tokens the model
+   generates that are returned separately from the final response.
+   It's a feature of the API, not a leak.
+
+Q: "How do I choose the right thinking budget?"
+A: Match the budget to the task complexity. Simple factual lookups
+   need little or no thinking. Complex analysis with ambiguous inputs
+   benefits from a larger budget. You can tune it empirically — run
+   the same prompt at different budgets and see where the reasoning
+   quality plateaus. In the demo, 500 tokens produces noticeably
+   shorter reasoning than 5000, and 10000 doesn't add much beyond
+   5000 for this task. The sweet spot depends on the domain.
+
+Q: "Can the model 'plan' in the thinking block — like 'I should read
+   this file' or 'I need to call this tool'?"
+A: Yes. When an agent has tools available, the thinking block often
+   contains planning: "I need to look up the server inventory first,
+   then identify the right server, then restart it." This is the
+   model's plan-before-action process. The budget constrains how
+   much planning the model can do. A tight budget may cause the
+   model to skip planning and jump straight to action — which is
+   exactly the kind of behavior that leads to fabrication (Demo 2).
+
+COST: ~$0.01-0.05 per run depending on model and budget

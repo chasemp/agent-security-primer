@@ -17,6 +17,7 @@ DEMO_DIRS = [
     "02_hallucination",
     "03_math",
     "04_temperature",
+    "05_thinking_aloud",
 ]
 
 

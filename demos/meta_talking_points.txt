@@ -1,0 +1,119 @@
+META TALKING POINTS — Topics Without Demos
+
+These are security-relevant topics that come up in Q&A or discussion
+but don't have their own live demo, either because the model handles
+them well now or because they require infrastructure we can't show
+in a terminal.
+
+
+CONTEXT POSITION AND THE U-CURVE
+
+Key point: "Lost in the Middle" was a real vulnerability in older
+models. Current high-end models (Claude Haiku 4.5+) have resolved it.
+
+Background:
+The 2023 paper "Lost in the Middle: How Language Models Use Long
+Contexts" (Liu et al.) showed that models paid more attention to
+information at the beginning and end of the context window and less
+to information in the middle. This produced a U-shaped curve when
+measuring retrieval accuracy by position.
+
+This had real security implications: if your safety instructions
+were in the middle of a long context, the model was less likely to
+follow them. Attackers could exploit this by padding context around
+a target instruction.
+
+What we tested:
+We attempted to reproduce the U-curve with Claude Haiku 4.5 using:
+  - 300 lines of server logs with an embedded instruction
+  - 1,000 structured records with a retrieval target at 3 positions
+  - 170K tokens (~85% of context window) of pure noise with a
+    single instruction at start, middle, and end
+
+Result: 100% compliance and retrieval accuracy at ALL positions
+across all tests. The model found the needle regardless of where
+we put it in the haystack.
+
+Why it's resolved:
+Newer transformer architectures and training techniques have
+improved attention distribution across the full context window.
+This doesn't mean position is irrelevant — it means the severe
+U-curve degradation observed in 2023-era models is no longer
+present in current frontier models.
+
+Why this still matters for the talk:
+  - Older or smaller models may still exhibit the effect
+  - Open-source models (Llama, Mistral) vary in their attention quality
+  - If your agent uses a model you haven't tested, you can't assume
+    position-invariant attention
+  - The test itself (embed an instruction at 3 positions, measure
+    compliance) is a useful evaluation pattern the audience can take
+    home and apply to their own models
+
+Future demo option:
+Download a smaller open-source model (e.g., a 7B parameter model
+via Ollama) and run the same position test. The U-curve will likely
+appear, making the contrast with Claude's handling a concrete
+lesson in "model choice is a security decision."
+
+If asked: "We tested this live and Claude handled it perfectly at
+170K tokens. But we verified it because trust-but-verify is the
+whole point of this talk. If you're using a different model, run
+the same test before you assume position doesn't matter."
+
+
+CONTEXT WINDOW SIZE LIMITS
+
+Key point: The context window is finite. Every token of input
+(system prompt, user message, tool results, conversation history)
+competes for space. When the window fills up, older content gets
+dropped or summarized, potentially losing safety instructions.
+
+This is relevant to:
+  - Demo 3 (Math): longer prompts with more context cost more
+  - Demo 5 (Thinking): thinking tokens consume output budget
+  - The agent setup (multi-turn): each turn adds to the context
+
+Practical advice: Monitor response.usage.input_tokens as a
+"context pressure gauge." If it's climbing toward the limit,
+your agent's ability to follow instructions degrades — not
+because of position effects, but because content gets evicted.
+
+
+MODEL BEHAVIOR CHANGES OVER TIME
+
+Key point: The demos in this talk are tested against specific
+model versions. When Anthropic updates a model, behavior can
+change — injections that worked may stop working, math errors
+may get fixed, hallucination patterns may shift.
+
+This is why we have live pre-flight tests (pytest -m live).
+Run them before any presentation to verify the demos still
+produce the expected behavior. If a demo breaks because the
+model improved, that's a good thing — update the demo, don't
+fake the old behavior.
+
+The live test suite is also a pattern the audience can adopt:
+write tests that verify your agent's assumptions about model
+behavior, and run them when you update model versions.
+
+
+MULTI-MODEL CONSIDERATIONS
+
+Key point: Not all models behave the same way. A security
+pattern that works for Claude may not work for GPT-4, Gemini,
+or open-source models. And vice versa.
+
+Examples:
+  - The injection payloads in Demo 1 were tuned for Claude Haiku.
+    They may need adjustment for other models.
+  - The U-curve (above) is resolved in Claude but may still exist
+    in other models.
+  - Hallucination patterns (Demo 2) vary by model — some fabricate
+    more confidently than others.
+  - Temperature behavior (Demo 4) is model-specific. Some providers
+    don't guarantee determinism even at temperature=0.
+
+The takeaway: security testing is model-specific. When you change
+models, re-run your security tests. Our live test suite demonstrates
+this pattern.

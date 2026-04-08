@@ -21,6 +21,7 @@ DEMO_01 = Path(__file__).parent.parent / "demos" / "01_injection"
 DEMO_02 = Path(__file__).parent.parent / "demos" / "02_hallucination"
 DEMO_03 = Path(__file__).parent.parent / "demos" / "03_math"
 DEMO_04 = Path(__file__).parent.parent / "demos" / "04_temperature"
+DEMO_05 = Path(__file__).parent.parent / "demos" / "05_thinking_aloud"
 
 
 def _get_api_key():
@@ -257,3 +258,28 @@ class TestDemo04Temperature:
             "temperature=1 should produce variation across 3 runs, "
             f"but got {unique} unique response(s)"
         )
+
+
+# ---------------------------------------------------------------------------
+# Demo 5: Thinking Aloud — thinking blocks should appear
+# ---------------------------------------------------------------------------
+
+class TestDemo05ThinkingAloud:
+    """With --thinking enabled, the response should include a non-empty
+    thinking block showing the model's reasoning process."""
+
+    @pytest.mark.live
+    def test_thinking_block_is_present(self) -> None:
+        from ask_claude import send_message
+
+        v = DEMO_05 / "technical"
+        system = (v / "system_prompt.txt").read_text().strip()
+        task = (v / "task.txt").read_text().strip()
+
+        result = send_message(
+            system, task, api_key=_get_api_key(), thinking=True,
+        )
+
+        assert result["thinking"] is not None
+        assert len(result["thinking"]) > 50, "Thinking block should contain substantial reasoning"
+        assert len(result["text"]) > 0, "Response text should also be present"

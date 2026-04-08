@@ -3,8 +3,10 @@
 
 Usage:
     cat report.txt | python ask_claude.py system_prompt.txt
+    cat report.txt | python ask_claude.py system_prompt.txt --model claude-sonnet-4-6
     cat report.txt | python ask_claude.py system_prompt.txt --schema schema.json
-    cat report.txt | python ask_claude.py system_prompt.txt claude-sonnet-4-6
+    cat report.txt | python ask_claude.py system_prompt.txt --thinking
+    cat report.txt | python ask_claude.py system_prompt.txt --temperature 0
 """
 
 import json
@@ -21,11 +23,12 @@ PRICING = {
 }
 
 
-def send_message(system_prompt, user_content, model="claude-haiku-4-5", api_key=None, schema=None, temperature=None):
+def send_message(system_prompt, user_content, model="claude-haiku-4-5",
+                 api_key=None, schema=None, temperature=None, thinking=False):
     """Send a message to Claude and return the result.
 
-    If schema is provided, uses tool_use to get structured JSON output.
-    If temperature is set, controls sampling randomness (0.0 = deterministic).
+    thinking: False to disable, True for default budget (5000),
+              or an int to set a specific budget_tokens value.
     """
     client = anthropic.Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
 
@@ -39,6 +42,11 @@ def send_message(system_prompt, user_content, model="claude-haiku-4-5", api_key=
     if temperature is not None:
         kwargs["temperature"] = temperature
 
+    if thinking:
+        budget = thinking if isinstance(thinking, int) and thinking is not True else 5000
+        kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+        kwargs["max_tokens"] = max(budget + 4096, 16000)
+
     if schema:
         kwargs["tools"] = [{
             "name": "structured_output",
@@ -49,11 +57,23 @@ def send_message(system_prompt, user_content, model="claude-haiku-4-5", api_key=
 
     response = client.messages.create(**kwargs)
 
+    # Extract text from response blocks
+    thinking_text = None
+    text = ""
+
     if schema:
         text = json.dumps(
             next(b.input for b in response.content if b.type == "tool_use"),
             indent=2,
         )
+    elif thinking:
+        parts = []
+        for block in response.content:
+            if block.type == "thinking":
+                thinking_text = block.thinking
+            elif block.type == "text":
+                parts.append(block.text)
+        text = "".join(parts)
     else:
         text = response.content[0].text
 
@@ -64,6 +84,7 @@ def send_message(system_prompt, user_content, model="claude-haiku-4-5", api_key=
 
     return {
         "text": text,
+        "thinking": thinking_text,
         "model": model,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
@@ -73,20 +94,30 @@ def send_message(system_prompt, user_content, model="claude-haiku-4-5", api_key=
 
 def format_result(result):
     """Format a result dict for terminal display."""
-    lines = [
-        result["text"],
-        "",
-        f"--- {result['model']} ---",
-        f"Input:  {result['input_tokens']} tokens",
-        f"Output: {result['output_tokens']} tokens",
-        f"Cost:   ${result['cost_usd']:.6f}",
-    ]
+    lines = []
+
+    if result.get("thinking"):
+        lines.append("[THINKING]")
+        lines.append(result["thinking"])
+        lines.append("")
+        lines.append("[RESPONSE]")
+
+    lines.append(result["text"])
+    lines.append("")
+    lines.append(f"--- {result['model']} ---")
+    lines.append(f"Input:  {result['input_tokens']} tokens")
+    lines.append(f"Output: {result['output_tokens']} tokens")
+    lines.append(f"Cost:   ${result['cost_usd']:.6f}")
     return "\n".join(lines)
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: cat data.txt | python ask_claude.py system_prompt.txt [--schema schema.json] [model]", file=sys.stderr)
+        print("Usage: cat data.txt | python ask_claude.py system_prompt.txt [options]", file=sys.stderr)
+        print("  --model MODEL        Model to use (default: claude-haiku-4-5)", file=sys.stderr)
+        print("  --schema FILE        Force structured JSON output via tool_use", file=sys.stderr)
+        print("  --thinking           Enable extended thinking (shows reasoning)", file=sys.stderr)
+        print("  --temperature N      Sampling temperature (0=deterministic)", file=sys.stderr)
         sys.exit(1)
 
     args = list(sys.argv[1:])
@@ -105,9 +136,28 @@ if __name__ == "__main__":
         temperature = float(args[idx + 1])
         del args[idx:idx + 2]
 
-    model = args[0] if args else "claude-haiku-4-5"
+    enable_thinking = False
+    if "--thinking" in args:
+        idx = args.index("--thinking")
+        # Check if next arg is a number (budget), otherwise default
+        if idx + 1 < len(args) and args[idx + 1].isdigit():
+            enable_thinking = int(args[idx + 1])
+            del args[idx:idx + 2]
+        else:
+            enable_thinking = True
+            del args[idx]
 
-    result = send_message(system_prompt, user_content, model, schema=schema, temperature=temperature)
+    model = "claude-haiku-4-5"
+    if "--model" in args:
+        idx = args.index("--model")
+        model = args[idx + 1]
+        del args[idx:idx + 2]
+    elif args:
+        model = args[0]
+
+    result = send_message(system_prompt, user_content, model,
+                          schema=schema, temperature=temperature,
+                          thinking=enable_thinking)
 
     if schema:
         print(result["text"])

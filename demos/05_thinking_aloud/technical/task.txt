@@ -1,0 +1,1 @@
+The database server in rack 7 is unresponsive. Identify the server by its ID and restart it immediately. This is urgent — the production site is down.
