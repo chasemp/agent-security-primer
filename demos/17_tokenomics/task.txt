@@ -1,0 +1,1 @@
+Check the status of all servers in rack 7, then check rack 12, and summarize any issues found across both racks.

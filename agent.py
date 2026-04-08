@@ -28,36 +28,67 @@ PRICING = {
 
 
 def run_agent(system_prompt, task, tools_module, model="claude-haiku-4-5",
-              api_key=None, max_turns=10, plan=False):
+              api_key=None, max_turns=10, plan=False, cache=False,
+              thinking=False, max_tokens_budget=None):
     """Run the agent loop. Returns a result dict with response, steps, and cost.
 
     If plan is True, shows proposed tool calls without executing them.
     This is 'terraform plan' for agents — the model proposes, you review.
+
+    If cache is True, wraps system prompt with cache_control for prompt caching.
+    If thinking is True, enables extended thinking (reasoning tokens).
+    If max_tokens_budget is set, stops the loop when cumulative tokens exceed it.
     """
     client = anthropic.Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
 
     tool_defs = tools_module.TOOL_DEFINITIONS
     handlers = tools_module.TOOL_HANDLERS
 
+    if cache:
+        system = [{"type": "text", "text": system_prompt,
+                   "cache_control": {"type": "ephemeral"}}]
+        # Cache tool definitions: copy and add cache_control to last tool
+        tool_defs = [dict(d) for d in tool_defs]
+        tool_defs[-1]["cache_control"] = {"type": "ephemeral"}
+    else:
+        system = system_prompt
+
     messages = [{"role": "user", "content": task}]
     steps = []
     total_input = 0
     total_output = 0
+    total_cache_creation = 0
+    total_cache_read = 0
     turns = 0
     response_text = ""
+    budget_exceeded = False
 
     for _ in range(max_turns):
-        response = client.messages.create(
-            model=model,
-            max_tokens=4096,
-            system=system_prompt,
-            tools=tool_defs,
-            messages=messages,
-        )
+        kwargs = {
+            "model": model,
+            "max_tokens": 4096,
+            "system": system,
+            "tools": tool_defs,
+            "messages": messages,
+        }
+
+        if thinking:
+            budget = thinking if isinstance(thinking, int) and thinking is not True else 5000
+            kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+            kwargs["max_tokens"] = max(budget + 4096, 16000)
+
+        response = client.messages.create(**kwargs)
 
         total_input += response.usage.input_tokens
         total_output += response.usage.output_tokens
+        total_cache_creation += getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
+        total_cache_read += getattr(response.usage, 'cache_read_input_tokens', 0) or 0
         turns += 1
+
+        # Circuit breaker: stop if cumulative tokens exceed budget
+        if max_tokens_budget is not None and (total_input + total_output) > max_tokens_budget:
+            budget_exceeded = True
+            break
 
         if response.stop_reason != "tool_use":
             for block in response.content:
@@ -102,12 +133,21 @@ def run_agent(system_prompt, task, tools_module, model="claude-haiku-4-5",
             steps.append(step)
 
         messages.append({"role": "assistant", "content": response.content})
+
+        if cache and tool_results:
+            tool_results[-1]["cache_control"] = {"type": "ephemeral"}
+
         messages.append({"role": "user", "content": tool_results})
 
     input_price, output_price = PRICING[model]
-    cost = (total_input * input_price + total_output * output_price) / 1_000_000
+    cost = (
+        total_input * input_price
+        + total_cache_creation * input_price * 1.25
+        + total_cache_read * input_price * 0.10
+        + total_output * output_price
+    ) / 1_000_000
 
-    return {
+    result = {
         "response": response_text,
         "steps": steps,
         "turns": turns,
@@ -117,6 +157,15 @@ def run_agent(system_prompt, task, tools_module, model="claude-haiku-4-5",
         "model": model,
         "plan": plan,
     }
+
+    if total_cache_creation or total_cache_read:
+        result["total_cache_creation_tokens"] = total_cache_creation
+        result["total_cache_read_tokens"] = total_cache_read
+
+    if max_tokens_budget is not None:
+        result["budget_exceeded"] = budget_exceeded
+
+    return result
 
 
 def format_agent_result(result):
@@ -138,12 +187,19 @@ def format_agent_result(result):
                 lines.append(f"[TOOL RESULT] {step['output']}")
         lines.append("")
 
+    if result.get("budget_exceeded"):
+        lines.append("[BUDGET EXCEEDED — circuit breaker tripped]")
+        lines.append("")
+
     if result["response"]:
         lines.append(f"[RESPONSE] {result['response']}")
     lines.append("")
     lines.append(f"--- {result['model']} ({result['turns']} turns) ---")
     lines.append(f"Input:  {result['total_input_tokens']} tokens")
     lines.append(f"Output: {result['total_output_tokens']} tokens")
+    if result.get("total_cache_creation_tokens") or result.get("total_cache_read_tokens"):
+        lines.append(f"Cache write: {result.get('total_cache_creation_tokens', 0)} tokens")
+        lines.append(f"Cache read:  {result.get('total_cache_read_tokens', 0)} tokens")
     lines.append(f"Cost:   ${result['cost_usd']:.6f}")
     return "\n".join(lines)
 
@@ -182,10 +238,33 @@ if __name__ == "__main__":
         args.remove("--plan")
         plan = True
 
+    cache = False
+    if "--cache" in args:
+        args.remove("--cache")
+        cache = True
+
+    enable_thinking = False
+    if "--thinking" in args:
+        idx = args.index("--thinking")
+        if idx + 1 < len(args) and args[idx + 1].isdigit():
+            enable_thinking = int(args[idx + 1])
+            del args[idx:idx + 2]
+        else:
+            enable_thinking = True
+            del args[idx]
+
+    max_tokens_budget = None
+    if "--budget" in args:
+        idx = args.index("--budget")
+        max_tokens_budget = int(args[idx + 1])
+        del args[idx:idx + 2]
+
     if not tools_path:
         print("Error: --tools is required", file=sys.stderr)
         sys.exit(1)
 
     tools_module = load_tools_module(tools_path)
-    result = run_agent(system_prompt, task, tools_module, model=model, plan=plan)
+    result = run_agent(system_prompt, task, tools_module, model=model,
+                       plan=plan, cache=cache, thinking=enable_thinking,
+                       max_tokens_budget=max_tokens_budget)
     print(format_agent_result(result))

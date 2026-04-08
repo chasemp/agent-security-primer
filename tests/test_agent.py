@@ -18,7 +18,9 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def _make_tool_use_response(tool_name, tool_input, tool_id="toolu_test_123",
-                            input_tokens=200, output_tokens=50):
+                            input_tokens=200, output_tokens=50,
+                            cache_creation_input_tokens=0,
+                            cache_read_input_tokens=0):
     """Mock a response where the model wants to call a tool."""
     resp = MagicMock()
     block = MagicMock()
@@ -30,10 +32,14 @@ def _make_tool_use_response(tool_name, tool_input, tool_id="toolu_test_123",
     resp.stop_reason = "tool_use"
     resp.usage.input_tokens = input_tokens
     resp.usage.output_tokens = output_tokens
+    resp.usage.cache_creation_input_tokens = cache_creation_input_tokens
+    resp.usage.cache_read_input_tokens = cache_read_input_tokens
     return resp
 
 
-def _make_text_response(text="Done.", input_tokens=300, output_tokens=20):
+def _make_text_response(text="Done.", input_tokens=300, output_tokens=20,
+                        cache_creation_input_tokens=0,
+                        cache_read_input_tokens=0):
     """Mock a response where the model is finished (end_turn)."""
     resp = MagicMock()
     block = MagicMock()
@@ -43,6 +49,8 @@ def _make_text_response(text="Done.", input_tokens=300, output_tokens=20):
     resp.stop_reason = "end_turn"
     resp.usage.input_tokens = input_tokens
     resp.usage.output_tokens = output_tokens
+    resp.usage.cache_creation_input_tokens = cache_creation_input_tokens
+    resp.usage.cache_read_input_tokens = cache_read_input_tokens
     return resp
 
 
@@ -367,3 +375,448 @@ class TestFormatAgentResult:
         })
         assert "$" in output
         assert "200" in output
+
+    def test_format_shows_cache_stats_when_present(self) -> None:
+        from agent import format_agent_result
+
+        output = format_agent_result({
+            "response": "Done.",
+            "steps": [],
+            "turns": 3,
+            "total_input_tokens": 500,
+            "total_output_tokens": 100,
+            "total_cache_creation_tokens": 2000,
+            "total_cache_read_tokens": 4000,
+            "cost_usd": 0.002,
+            "model": "claude-haiku-4-5",
+        })
+        assert "Cache write" in output
+        assert "2000" in output
+        assert "Cache read" in output
+        assert "4000" in output
+
+    def test_format_omits_cache_stats_when_zero(self) -> None:
+        from agent import format_agent_result
+
+        output = format_agent_result({
+            "response": "Done.",
+            "steps": [],
+            "turns": 1,
+            "total_input_tokens": 200,
+            "total_output_tokens": 50,
+            "cost_usd": 0.001,
+            "model": "claude-haiku-4-5",
+        })
+        assert "Cache" not in output
+
+
+# ---------------------------------------------------------------------------
+# cache mode — prompt caching with cache_control
+# ---------------------------------------------------------------------------
+
+class TestCacheMode:
+    def test_cache_sends_structured_system_prompt(self) -> None:
+        """When cache=True, system prompt is a list with cache_control."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="test prompt",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                cache=True,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        system = call_args["system"]
+        assert isinstance(system, list)
+        assert len(system) == 1
+        assert system[0]["type"] == "text"
+        assert system[0]["text"] == "test prompt"
+        assert system[0]["cache_control"] == {"type": "ephemeral"}
+
+    def test_no_cache_sends_string_system_prompt(self) -> None:
+        """Default behavior: system prompt is a plain string."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="test prompt",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["system"] == "test prompt"
+
+    def test_cache_adds_cache_control_to_last_tool_definition(self) -> None:
+        """When cache=True, the last tool definition gets cache_control
+        so the API caches system prompt + all tool schemas as a prefix."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="test",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                cache=True,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        tools = call_args["tools"]
+        last_tool = tools[-1]
+        assert "cache_control" in last_tool
+        assert last_tool["cache_control"] == {"type": "ephemeral"}
+
+    def test_no_cache_leaves_tool_definitions_unchanged(self) -> None:
+        """Without cache, tool definitions have no cache_control."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="test",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        tools = call_args["tools"]
+        for tool in tools:
+            assert "cache_control" not in tool
+
+    def test_cache_does_not_mutate_original_tool_definitions(self) -> None:
+        """Caching should copy tool defs, not mutate the module's originals."""
+        from agent import run_agent
+
+        tools_module = _make_tools_module()
+        original_defs = [dict(d) for d in tools_module.TOOL_DEFINITIONS]
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="test",
+                task="go",
+                tools_module=tools_module,
+                api_key="fake",
+                cache=True,
+            )
+
+        # Original definitions should be unchanged
+        for orig, current in zip(original_defs, tools_module.TOOL_DEFINITIONS):
+            assert "cache_control" not in current
+
+    def test_tracks_cache_creation_tokens(self) -> None:
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "x"},
+                                        cache_creation_input_tokens=2000),
+                _make_text_response(cache_creation_input_tokens=0),
+            ]
+
+            result = run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                cache=True,
+            )
+
+        assert result["total_cache_creation_tokens"] == 2000
+
+    def test_tracks_cache_read_tokens(self) -> None:
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "x"},
+                                        cache_creation_input_tokens=2000,
+                                        cache_read_input_tokens=0),
+                _make_text_response(cache_creation_input_tokens=0,
+                                    cache_read_input_tokens=2000),
+            ]
+
+            result = run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                cache=True,
+            )
+
+        assert result["total_cache_read_tokens"] == 2000
+
+    def test_cache_adds_cache_control_to_conversation_messages(self) -> None:
+        """When cache=True, assistant and tool_result messages get cache_control
+        on their last content block, so the growing conversation prefix is cached."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "hi"}),
+                _make_text_response("Done."),
+            ]
+
+            run_agent(
+                system_prompt="test",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                cache=True,
+            )
+
+        # Second API call should have cache_control on the last tool_result
+        second_call = mock_client.messages.create.call_args_list[1].kwargs
+        messages = second_call["messages"]
+        # Find the user message with tool results (last user message)
+        tool_result_msg = [m for m in messages if m["role"] == "user"][-1]
+        last_result = tool_result_msg["content"][-1]
+        assert "cache_control" in last_result
+        assert last_result["cache_control"] == {"type": "ephemeral"}
+
+    def test_no_cache_skips_conversation_cache_control(self) -> None:
+        """Without cache, no cache_control on conversation messages."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "hi"}),
+                _make_text_response("Done."),
+            ]
+
+            run_agent(
+                system_prompt="test",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+            )
+
+        second_call = mock_client.messages.create.call_args_list[1].kwargs
+        messages = second_call["messages"]
+        tool_result_msg = [m for m in messages if m["role"] == "user"][-1]
+        last_result = tool_result_msg["content"][-1]
+        assert "cache_control" not in last_result
+
+    def test_cost_accounts_for_cache_pricing(self) -> None:
+        """Cache writes cost 1.25x input, cache reads cost 0.1x input."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            # Turn 1: cache write of 1000 tokens, 100 regular input
+            # Turn 2: cache read of 1000 tokens, 200 regular input
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "x"},
+                                        input_tokens=100, output_tokens=0,
+                                        cache_creation_input_tokens=1000,
+                                        cache_read_input_tokens=0),
+                _make_text_response(input_tokens=200, output_tokens=0,
+                                    cache_creation_input_tokens=0,
+                                    cache_read_input_tokens=1000),
+            ]
+
+            result = run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                cache=True,
+            )
+
+        # Haiku: input=$1/MTok, output=$5/MTok
+        # Regular input: (100+200) * 1.00 / 1M = 0.000300
+        # Cache write: 1000 * 1.00 * 1.25 / 1M = 0.001250
+        # Cache read:  1000 * 1.00 * 0.10 / 1M = 0.000100
+        # Output: 0
+        # Total: 0.001650
+        assert result["cost_usd"] == pytest.approx(0.001650)
+
+
+# ---------------------------------------------------------------------------
+# thinking mode — extended thinking in agent loop
+# ---------------------------------------------------------------------------
+
+class TestThinkingMode:
+    def test_thinking_passes_thinking_config(self) -> None:
+        """When thinking=True, API call includes thinking parameter."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                thinking=True,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert "thinking" in call_args
+        assert call_args["thinking"]["type"] == "enabled"
+
+    def test_thinking_sets_higher_max_tokens(self) -> None:
+        """Thinking needs a higher max_tokens to accommodate budget."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                thinking=True,
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["max_tokens"] > 4096
+
+    def test_no_thinking_by_default(self) -> None:
+        """Default behavior: no thinking parameter."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert "thinking" not in call_args
+
+
+# ---------------------------------------------------------------------------
+# token budget circuit breaker — hard stop on cumulative tokens
+# ---------------------------------------------------------------------------
+
+class TestTokenBudget:
+    def test_stops_when_budget_exceeded(self) -> None:
+        """Agent stops after a turn if cumulative tokens exceed budget."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            # Turn 1: 200 input + 50 output = 250 tokens (over budget of 200)
+            # Should stop after turn 1 even though model wants a tool call
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "x"},
+                                        input_tokens=200, output_tokens=50),
+                _make_text_response("Should not reach this."),
+            ]
+
+            result = run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                max_tokens_budget=200,
+            )
+
+        assert result["turns"] == 1
+        assert result["budget_exceeded"] is True
+        assert mock_client.messages.create.call_count == 1
+
+    def test_continues_when_under_budget(self) -> None:
+        """Agent continues normally when within budget."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "x"},
+                                        input_tokens=100, output_tokens=30),
+                _make_text_response(input_tokens=200, output_tokens=20),
+            ]
+
+            result = run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                max_tokens_budget=10000,
+            )
+
+        assert result["turns"] == 2
+        assert result["budget_exceeded"] is False
+
+    def test_no_budget_by_default(self) -> None:
+        """Without max_tokens_budget, no budget_exceeded in result."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = _make_text_response()
+
+            result = run_agent(
+                system_prompt="x",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+            )
+
+        assert "budget_exceeded" not in result
+
+    def test_format_shows_budget_exceeded_warning(self) -> None:
+        from agent import format_agent_result
+
+        output = format_agent_result({
+            "response": "",
+            "steps": [{"tool": "echo", "input": {"message": "x"},
+                       "output": '{"echoed": "x"}', "error": None}],
+            "turns": 3,
+            "total_input_tokens": 5200,
+            "total_output_tokens": 300,
+            "cost_usd": 0.008,
+            "model": "claude-haiku-4-5",
+            "budget_exceeded": True,
+        })
+        assert "BUDGET EXCEEDED" in output

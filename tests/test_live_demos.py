@@ -370,3 +370,37 @@ class TestDemo16ConditionalAuth:
         has_error = any(s["error"] is not None for s in action_steps)
         has_success = any(s["error"] is None for s in action_steps)
         assert has_error or has_success, "Should have at least one attempt"
+
+
+# ---------------------------------------------------------------------------
+# Demo 17: Tokenomics — prompt caching activates on multi-turn
+# ---------------------------------------------------------------------------
+
+class TestDemo17Tokenomics:
+    @pytest.mark.live
+    def test_cache_activates_on_multiturn(self) -> None:
+        """With cache=True, cache_read_tokens should be >0 on turn 2+."""
+        from agent import run_agent, load_tools_module
+        d = DEMOS / "17_tokenomics"
+        system = (d / "system_prompt.txt").read_text().strip()
+        task = (d / "task.txt").read_text().strip()
+        tools = load_tools_module(str(d / "tools.py"))
+        result = run_agent(system, task, tools, api_key=_get_api_key(),
+                           cache=True)
+        assert result["turns"] >= 2, "Need at least 2 turns to test cache read"
+        assert result.get("total_cache_read_tokens", 0) > 0, (
+            "Cache read tokens should be >0 when caching is enabled "
+            "and the agent runs multiple turns"
+        )
+
+    @pytest.mark.live
+    def test_no_cache_baseline(self) -> None:
+        """Without cache, no cache tokens should appear."""
+        from agent import run_agent, load_tools_module
+        d = DEMOS / "17_tokenomics"
+        system = (d / "system_prompt.txt").read_text().strip()
+        task = (d / "task.txt").read_text().strip()
+        tools = load_tools_module(str(d / "tools.py"))
+        result = run_agent(system, task, tools, api_key=_get_api_key())
+        assert result.get("total_cache_read_tokens", 0) == 0
+        assert result.get("total_cache_creation_tokens", 0) == 0

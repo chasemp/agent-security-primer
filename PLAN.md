@@ -2,7 +2,7 @@
 
 ## Current State (2026-04-08)
 
-16 demos built, 286 tests (264 mocked + 25 live pre-flight).
+17 demos built, 310 mocked tests + 27 live pre-flight.
 Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0.08).
 
 ### Scripts
@@ -33,6 +33,7 @@ Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0
 | 14 | Credential Isolation | Secrets never enter the context | agent.py |
 | 15 | Indirect Injection | Poisoned data from tools | agent.py |
 | 16 | Conditional Auth | Bouncer with rules (@model_validator) | agent.py + run_tool.py |
+| 17 | Tokenomics | Prompt caching, thinking accumulation, cost controls | agent.py --cache --thinking |
 
 ### Supporting Docs
 - `talking_points.txt` in every demo directory

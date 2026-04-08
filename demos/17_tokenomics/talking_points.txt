@@ -1,0 +1,373 @@
+DEMO 17: TOKENOMICS — What Every Turn Actually Costs
+
+KEY TAKEAWAY
+Tokens are money. Two opt-in controls — prompt caching and thinking
+token management — determine whether your agent loop burns 10x what
+it needs to. Understanding the cost mechanics turns a "credit card
+attached to a while loop" into a predictable line item.
+
+This demo covers two cost levers:
+  1. Prompt caching — the system prompt is re-read every turn.
+     Without caching, you pay full price each time. With cache_control,
+     turns 2+ read from cache at 90% discount.
+  2. Thinking token accumulation — ThinkingBlocks stay in the messages
+     array. Each turn's thinking tokens become input tokens for every
+     subsequent turn. Costs compound quadratically.
+
+
+PART 1: PROMPT CACHING
+
+BACKGROUND
+Every turn in the agent loop sends the full system prompt to the API.
+The model re-reads it from scratch. At Opus rates ($15/MTok input),
+a 2,000-token system prompt across 10 turns = 20,000 input tokens
+just for the system prompt. That's $0.30 in system-prompt cost alone.
+
+Prompt caching is OPT-IN. You must add a cache_control breakpoint
+to the system prompt in the API call. Without it, every turn pays
+full price. With it, the server caches the prompt on turn 1 and
+subsequent turns read from cache.
+
+THE PRICING
+  - Cache write (turn 1):   1.25x the base input price
+  - Cache read (turns 2+):  0.10x the base input price
+  - No caching (default):   1.00x the base input price
+
+THE MATH (10-turn agent loop, 2K system prompt)
+  Without cache:  10 turns × 2,000 tokens × $15/MTok = $0.30
+  With cache:     1 write × 2,000 × $18.75/MTok      = $0.0375
+                  9 reads × 2,000 × $1.50/MTok        = $0.027
+                  Total                                = $0.0645
+
+  Savings: 78% on system prompt cost alone.
+
+  At scale: 100 agents × 30 turns/day × $15/MTok = real money.
+
+THE MINIMUM THRESHOLD
+Prompt caching requires a minimum prompt size to activate:
+  - ~1024 tokens for most Claude models
+  - ~2048 tokens for some variants
+
+If your system prompt is too short, cache_control is accepted but
+caching silently does nothing. This demo uses a realistic operations
+agent prompt (~2000 tokens) to ensure caching activates.
+
+HOW CACHING WORKS — PREFIX MATCHING
+Caching is prefix-based. The API caches everything from the start
+of the input up to the cache_control breakpoint. On subsequent
+requests, if the prefix matches exactly, cached tokens are read
+instead of reprocessed.
+
+In a multi-turn agent loop:
+
+  Turn 1: [system_prompt <- CACHE WRITE] + user_msg
+           ----------------------------   --------
+           cached (1.25x)                 processed (1x)
+
+  Turn 2: [system_prompt <- CACHE READ]  + user + asst_T1 + tool_T1
+           ----------------------------   ----------------------------
+           from cache (0.1x)              processed (1x)
+
+  Turn 3: [system_prompt <- CACHE READ]  + user + asst_T1 + tool_T1 + asst_T2 + tool_T2
+           ----------------------------   -------------------------------------------------
+           from cache (0.1x)              processed (1x)
+
+The system prompt is always the prefix, so it always hits the
+cache. The growing conversation history after the prefix is
+processed fresh every turn — that part is NOT cached.
+
+The cache is keyed on exact prefix content — if you change one
+character in the system prompt, it's a cache miss.
+
+CACHING TOOL DEFINITIONS
+Tool definitions (the tools array) are sent to the API every
+turn — just like the system prompt. For an agent with 6 tools
+and detailed schemas, that's easily 800-1500 tokens per turn,
+reprocessed from scratch.
+
+The fix: put cache_control on the LAST tool in the tools array.
+The API caches system prompt + all tool definitions as a single
+prefix block.
+
+THE MATH (this demo's tool block)
+  Our 6 tools serialize to ~3000 characters ≈ ~800 tokens.
+  Over 10 turns on Opus ($15/MTok):
+
+  Without tool caching:  10 × 800 × $15/MTok = $0.12
+  With tool caching:     1 write × 800 × $18.75/MTok = $0.015
+                         9 reads × 800 × $1.50/MTok  = $0.011
+                         Total                        = $0.026
+
+  Savings: 78% on tool definition cost.
+
+  Production agents with 15-20 tools and complex schemas can
+  have 3000-5000 tokens in tool definitions. At that scale,
+  the savings are proportionally larger.
+
+THE CODE CHANGE
+  # Add cache_control to the last tool definition:
+  tool_defs = [dict(d) for d in tool_definitions]
+  tool_defs[-1]["cache_control"] = {"type": "ephemeral"}
+
+THE DEMO FLOW
+  # "Look at how big this tool block is"
+  python -c "import json; from demos.17_tokenomics.tools import TOOL_DEFINITIONS; \
+    print(f'{len(json.dumps(TOOL_DEFINITIONS))} chars, ~{len(json.dumps(TOOL_DEFINITIONS))//4} tokens')"
+
+  # "Every turn, this entire block is re-sent and reprocessed"
+  # "Over 10 turns, that's 10x the cost for the same static content"
+
+  # "With --cache, we add cache_control to the last tool"
+  # "Turns 2+ read the tool block from cache at 90% discount"
+
+CACHING CONVERSATION HISTORY
+This is what Claude Code does — and it's the biggest win for
+long-running agent loops. Put cache_control on the last content
+block of every user and assistant message. This means each turn's
+entire conversation prefix (system prompt + all prior messages)
+is cached.
+
+Without conversation caching:
+  Turn 10 processes: system_prompt + tools + messages 1-9 + new message
+                     ALL at full price
+
+With conversation caching:
+  Turn 10 reads: system_prompt + tools + messages 1-9 from cache (0.1x)
+  Turn 10 processes: only the new message (1x)
+
+For a 30-turn agent loop, turn 30 would reprocess ~29 turns of
+history at full price without this. With conversation caching,
+only the newest message is processed fresh.
+
+Our agent.py --cache flag does all three layers:
+  1. System prompt — cache_control on the system text block
+  2. Tool definitions — cache_control on the last tool schema
+  3. Conversation history — cache_control on the last tool_result
+
+THE THREE LAYERS COMBINED (10-turn loop on Opus, this demo)
+  System prompt:  ~2000 tokens
+  Tool schemas:   ~800 tokens
+  Static total:   ~2800 tokens per turn
+
+  Without caching: 10 × 2800 × $15/MTok         = $0.42
+  With caching:    1 write × 2800 × $18.75/MTok  = $0.053
+                   9 reads × 2800 × $1.50/MTok   = $0.038
+                   Total                          = $0.091
+
+  Savings: $0.33 per run. That's 78% reduction on the static
+  prefix alone — before conversation caching even kicks in.
+
+  Add conversation caching and the savings grow with each turn,
+  because the cached prefix includes all prior messages too.
+
+THE CACHE TTL
+Cache entries last 5 minutes, extended on each hit. An active agent
+loop that makes calls every few seconds stays cached indefinitely.
+A batch job that runs hourly pays the cache write cost each run.
+
+THE DEMO FLOW
+  # "First, without caching — watch the cost"
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py
+
+  # "Now with caching — same task, same prompt"
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py --cache
+
+  Compare the cost lines. The cached run is cheaper because turns 2+
+  read the system prompt from cache instead of reprocessing it.
+
+THE CODE CHANGE
+Without caching:
+  system=system_prompt                    # plain string
+
+With caching:
+  system=[{                               # structured with cache_control
+      "type": "text",
+      "text": system_prompt,
+      "cache_control": {"type": "ephemeral"}
+  }]
+
+One line of code. 78% savings on system prompt cost.
+
+
+PART 2: THINKING TOKEN ACCUMULATION
+
+BACKGROUND
+When extended thinking is enabled, the API returns ThinkingBlocks
+in response.content. In a multi-turn agent loop, you append the
+assistant's full response (including ThinkingBlocks) to the messages
+array. On the next turn, ALL prior ThinkingBlocks are sent back
+to the API as input tokens.
+
+THE MECHANISM
+  Turn 1:  input = system_prompt + user_msg                = 500 tokens
+  Turn 2:  input = above + T1_thinking + T1_text + T1_tool = 700 tokens
+  Turn 3:  input = above + T2_thinking + T2_text + T2_tool = 900 tokens
+  ...
+  Turn 30: input = all accumulated thinking + text + tools  = ???
+
+Each turn's thinking tokens stay in the conversation forever.
+
+THE COST IMPACT
+  Simple tasks (~190 thinking tokens/turn):
+    30 turns adds ~5,700 extra input tokens → modest cost
+
+  Complex investigations (~2,000 thinking tokens/turn):
+    30 turns adds ~60,000 extra input tokens → 30% of context window
+    At Opus rates: 60K × $15/MTok = $0.90 in accumulated thinking
+
+  Combined with a 2K system prompt (uncached):
+    30 × 2,000 = 60K system prompt tokens = $0.90
+    + 60K accumulated thinking             = $0.90
+    Total overhead: $1.80 per investigation
+
+THE DEMO FLOW
+  # "We already saw thinking in Demo 8. Now let's see what it costs."
+  # "Run with thinking, no cache — watch input tokens grow per turn"
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py --thinking
+
+  # "Same task with caching — system prompt is cheaper now"
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py --thinking --cache
+
+  Compare: the thinking tokens still accumulate (that's unavoidable
+  without stripping), but the system prompt cost drops dramatically.
+  The audience sees both levers in the same output.
+
+THE MITIGATION
+Strip ThinkingBlocks from response.content before appending to the
+messages array:
+
+  # Before appending to messages:
+  content_without_thinking = [
+      block for block in response.content
+      if block.type != "thinking"
+  ]
+
+The model loses its own reasoning history but retains tool results
+and text output. This is usually sufficient — the model reasons
+fresh each turn based on the accumulated facts, not its prior
+reasoning process.
+
+Trade-off: verify stripping doesn't degrade output quality for your
+use case before making it default. Some complex multi-step tasks
+benefit from the model seeing its own prior reasoning.
+
+
+PART 3: CIRCUIT BREAKER — TOKEN BUDGET
+
+BACKGROUND
+Caching reduces cost per turn. But the agent can still run away.
+A confused model, a poison injection, or an ambiguous task can
+cause the loop to burn through turns until max_turns stops it.
+By then the damage is done.
+
+A token budget circuit breaker is the financial hard stop. You
+set a ceiling — say 5000 tokens — and the agent exits immediately
+when cumulative tokens exceed it, regardless of whether the model
+is done or wants more turns.
+
+This is different from max_turns (which caps iterations). A token
+budget caps SPEND directly. A 3-turn conversation with a huge
+context can cost more than a 10-turn conversation with a small
+context. max_turns doesn't catch that; a token budget does.
+
+THE CODE
+  result = run_agent(
+      system_prompt, task, tools,
+      max_tokens_budget=5000,   # hard stop at 5000 total tokens
+  )
+
+  if result.get("budget_exceeded"):
+      print("Circuit breaker tripped — investigate why")
+
+THE DEMO FLOW
+  # "Set a tight budget and watch it trip"
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py --budget 1500
+
+  # The agent will trip the breaker after 1-2 turns because
+  # the system prompt + tools + task already consume ~3000 tokens.
+  # The audience sees: [BUDGET EXCEEDED — circuit breaker tripped]
+
+  # "Now a reasonable budget"
+  cat demos/17_tokenomics/task.txt | python agent.py \
+      demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py --budget 20000
+
+  # Completes normally. The budget was headroom, not a constraint.
+
+THE FULL TOKENOMICS STACK
+  1. Understand the costs (thinking accumulation, uncached prompts)
+  2. Reduce costs (prompt caching, tool caching, conversation caching)
+  3. Cap costs (token budget circuit breaker)
+
+  These three layers turn "a credit card attached to a while loop"
+  into a predictable, bounded line item.
+
+
+WHY THIS MATTERS
+  1. DENIAL OF WALLET: Without cost controls, an attacker who can
+     trigger long agent loops (via injection, tool failures, or
+     ambiguous tasks) burns your budget. Caching and thinking
+     management are financial defense controls.
+
+  2. PREDICTABLE COSTS: Understanding the token math lets you
+     forecast agent costs accurately. System prompt size × turns ×
+     model rate = baseline cost. Add thinking accumulation for
+     reasoning-heavy workflows.
+
+  3. SCALE MULTIPLIER: One agent is cheap. A hundred concurrent
+     agents running 30 turns each on Opus without caching is not.
+
+CONNECTION TO OTHER DEMOS
+  - Demo 08 (Thinking Aloud): shows HOW thinking works — this demo
+    shows what it COSTS
+  - Demo 11 (Context Pollution): both are about cost in multi-turn
+    loops. Pollution adds noise tokens; thinking adds reasoning tokens.
+    Both grow quadratically.
+  - Demo 09 (Plan Mode): plan mode keeps agent loops short, which
+    also keeps costs down
+
+Q&A PREPARATION
+
+Q: "Is prompt caching automatic?"
+A: No. You must add cache_control breakpoints to your API call.
+   The default behavior is full-price processing every turn.
+
+Q: "What if my system prompt is short?"
+A: If it's below the minimum threshold (~1024 tokens), caching
+   won't activate. But short prompts are cheap anyway — the savings
+   matter most for realistic production prompts (1000+ tokens).
+
+Q: "Should I always strip thinking tokens?"
+A: Not always. For simple tool-calling agents, stripping is safe
+   and saves money. For complex multi-step reasoning where the model
+   builds on its prior analysis, test first. The right answer depends
+   on your use case.
+
+Q: "Does caching work across different conversations?"
+A: Cache is keyed by the exact prompt prefix. Same system prompt
+   across different conversations will share the cache if calls
+   happen within the 5-minute TTL.
+
+Q: "What should I set the token budget to?"
+A: Depends on your task complexity and model. Profile a few typical
+   runs, take the 95th percentile token count, add 20% headroom.
+   Start generous and tighten as you learn your agent's patterns.
+   The goal is catching runaways, not constraining normal operation.
+
+Q: "How much does this actually save in production?"
+A: Depends on turns and model. A 30-turn investigation on Opus
+   with a 2K system prompt: caching saves ~$0.84 per run. With
+   6 concurrent agents, that's ~$5/batch. Over a month of daily
+   runs, it adds up to hundreds of dollars.
+
+COST: ~$0.005-0.01 per run (Haiku, 3-5 turns)
