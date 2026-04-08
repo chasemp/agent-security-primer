@@ -304,13 +304,95 @@ THE DEMO FLOW
 
   # Completes normally. The budget was headroom, not a constraint.
 
+PART 4: TOKEN MINIMIZATION — Compress Before You Send
+
+BACKGROUND
+Every token that enters the context window costs money. Tool
+results, API responses, log output — all of it gets tokenized
+and billed. But most of that text has whitespace, formatting,
+and structure that the model doesn't need to understand the
+content.
+
+Minimization is simple: compress the text before it becomes
+tokens. Strip whitespace, compact JSON, remove blank lines.
+The data is the same. The token count drops.
+
+THE SIMPLE VERSION (20 lines of Python)
+
+  # "Here's a verbose tool result — pretty-printed JSON."
+  cat demos/17_tokenomics/verbose_result.txt | wc -c
+  # → ~850 characters
+
+  # "Run it through a dead-simple minifier."
+  cat demos/17_tokenomics/verbose_result.txt | python minify.py
+  # → ~480 characters, same data
+
+  # "That's a 44% reduction. Same information, fewer tokens."
+
+The minify.py script is 20 lines. It tries to parse as JSON
+and re-serialize compactly. If it's not JSON, it strips
+trailing whitespace and collapses blank lines. That's it.
+
+  cat demos/17_tokenomics/verbose_result.txt | python minify.py
+  # Before: 850 chars (~212 tokens)
+  # After:  480 chars (~120 tokens)
+  # Saved:  92 tokens (43%)
+
+THE MATH
+For a 10-turn agent loop on Opus where each tool result is
+~200 tokens of verbose JSON:
+
+  Without minification: 10 turns × 200 tokens × $15/MTok
+  With minification:    10 turns × 114 tokens × $15/MTok
+  Savings per run: ~$0.013
+
+Small per run. But agents at scale — 100 agents × 30 turns ×
+10 tool calls each = 30,000 tool results. At 86 tokens saved
+per result, that's 2.58M tokens saved = $38.70 on Opus.
+
+THE PRODUCTION VERSION: RTK
+
+RTK (Rust Token Killer) is a production-grade tool that does
+this at scale. It sits as a proxy between CLI commands and the
+context window, automatically compressing output.
+
+Real-world stats from RTK:
+  - 11,168 commands processed
+  - 20.2M tokens saved
+  - 79% average efficiency
+  - Top savings: find (-98%), git push (-91%), ls (-72%)
+
+RTK does more than whitespace stripping:
+  - Removes ANSI color codes
+  - Filters redundant output (e.g., git status noise)
+  - Truncates oversized results
+  - Tracks savings analytics (rtk gain)
+
+The principle is the same as our 20-line Python script. The
+implementation is just faster and more comprehensive.
+
+  # Show RTK's actual savings (if RTK is installed)
+  rtk gain
+
+WHY MINIMIZATION MATTERS FOR AGENTS
+In an agent loop, tool results accumulate in the conversation
+history. Every prior tool result is re-sent as input on the
+next turn. So a 200-token verbose result on turn 3 becomes
+200 tokens of input on turns 4, 5, 6, 7... all the way to
+the end. Minimizing it to 114 tokens saves 86 tokens PER
+SUBSEQUENT TURN, not just once.
+
+Combined with conversation caching (Part 1), minimized results
+mean a smaller prefix to cache and read. The savings compound.
+
 THE FULL TOKENOMICS STACK
   1. Understand the costs (thinking accumulation, uncached prompts)
   2. Reduce costs (prompt caching, tool caching, conversation caching)
   3. Cap costs (token budget circuit breaker)
+  4. Minimize input (compress text before it becomes tokens)
 
-  These three layers turn "a credit card attached to a while loop"
-  into a predictable, bounded line item.
+  These four layers turn "a credit card attached to a while loop"
+  into a predictable, bounded, efficient line item.
 
 
 WHY THIS MATTERS
