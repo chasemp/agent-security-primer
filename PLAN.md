@@ -41,6 +41,8 @@ Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0
 | 21 | Domain Translation | Persona/audience framing steers predictions intentionally | ask_claude.py (planned) |
 | 22 | Rubric-Based Evaluation | Explicit criteria shape evaluation patterns | ask_claude.py (planned) |
 | 23 | Diagnosis from Evidence | Full context enables better reasoning | ask_claude.py (planned) |
+| **Reliability (planned)** | | |
+| 24 | Rate Limiting | Proactive throttling before hitting the wall | agent.py (planned) |
 
 ### Supporting Docs
 - `talking_points.txt` in every demo directory
@@ -160,12 +162,37 @@ Now that they understand the model, show how to build safely around
 it. Problem-solution pairs: pollution → translation, exposure →
 isolation, direct injection → indirect injection.
 
+**Pillar 3: Where they shine (Demos 18-23)**
+Now that they understand prediction AND safety, show where
+prediction IS reasoning — and how to steer it. Each demo has
+two faces: what the model does well, and the prompt engineering
+technique that makes it better.
+
+**Tokenomics (Demo 17)**
+Cost controls: caching (3 layers), thinking accumulation,
+circuit breaker, token minimization. Bridges security and
+practical operations.
+
 **Optional Pillar: Build a tiny LLM**
 The "aha" moment that ties everything together. Could be a pre-talk
 warmup, an appendix, or a separate session entirely.
 
+**Planned: Rate Limiting (Demo 24)**
+Proactive throttling — watch API capacity drain and slow down
+before hitting the wall. Reads anthropic-ratelimit-* headers
+from every response. Key design decisions:
+  - Proactive, not reactive (don't wait for 429, watch remaining/limit)
+  - 429 masking awareness (SDK retries 429s internally, you never
+    see most of them — can't rely on 429 counts)
+  - Multi-agent awareness (should_wait(active_agents=N) scales
+    delay when concurrent agents share a rate limit pool)
+  - Context window headroom is separate (token accumulation within
+    a conversation vs. API-level rate limits — orthogonal concerns)
+This might fold into Tokenomics or become its own demo. Decision
+needed on where it fits best.
+
 ### Audience Variants
-Demos 02, 03, 05 (planned), and 08 have themed variants:
+Demos 02, 03, 05 (planned), 08, 18, 19, and 20 have themed variants:
 - technical/ — engineering audience
 - expenses/ — business audience
 - contract/ — legal/general audience
