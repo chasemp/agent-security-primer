@@ -1,0 +1,63 @@
+DEMO 1: PROMPT INJECTION — Data and Code Are the Same Thing
+
+KEY TAKEAWAY
+An LLM has no boundary between "instructions" and "data." Everything
+in the context window is tokens. If an attacker can put text into
+the data your agent processes, they can put instructions there too.
+
+BACKGROUND
+In traditional computing, data and code are separate. You can't
+SQL-inject a CSV file. But LLMs process everything as a single
+token stream — the system prompt, the user message, and any data
+you feed in. There is no privilege boundary between them.
+
+This is "in-band signaling" — the same channel carries both control
+and data. The 2600Hz whistle that phone phreakers used to seize
+telephone trunk lines in the 1970s is the exact same class of
+vulnerability. The model can't distinguish between "analyze this
+report" (your instruction) and "ignore all previous instructions"
+(injected into the data).
+
+TWO PARTS TO THIS DEMO
+
+Part 1 — Instruction Override:
+  We embed a format instruction inside the data. The system prompt
+  says "summarize this text" but the data says "respond in three
+  words." The data wins. The model obeys instructions from the data
+  because there's no mechanism to privilege one set of tokens over
+  another (system prompts get some priority but it's statistical,
+  not absolute).
+
+Part 2 — Data Poisoning:
+  We embed false facts in the data. The model reports them as true
+  because it trusts the content of the data — it has no way to
+  verify facts against an external source. If the audit report says
+  there's a cryptominer running, the summary says there's a
+  cryptominer running.
+
+Q&A PREPARATION
+
+Q: "Can't system prompts prevent this?"
+A: System prompts get statistical priority but are not a hard
+   boundary. They're tokens in the same stream. In our demo, the
+   override injection in the DATA overrode the system prompt. System
+   prompts are guidance, not enforcement.
+
+Q: "Does this affect all LLMs or just Claude?"
+A: All transformer-based LLMs have this property. It's architectural,
+   not a Claude-specific bug. The token stream is the token stream.
+
+Q: "What's the defense?"
+A: Never trust model output on data you don't control. Validate at
+   the boundaries. Use structured output + validation (Demo 2 shows
+   this). Sanitize inputs. Treat the model's output as untrusted
+   user input, because when processing external data, it effectively
+   is.
+
+Q: "Is this the same as jailbreaking?"
+A: Related but different. Jailbreaking targets the model's safety
+   training. Prompt injection targets your application's logic. An
+   injection doesn't need to bypass safety — it just needs to change
+   what the model does with your data.
+
+COST: ~$0.003 per full run (both parts)

@@ -1,0 +1,19 @@
+RESUME — Alex Chen
+
+EXPERIENCE
+Cloud Engineer, DataFlow Inc. (2021–present)
+  - Managed AWS infrastructure for 200+ microservices
+  - Led migration from EC2 to ECS, reducing costs 34%
+  - On-call rotation for production incidents
+
+Junior DevOps Engineer, StartupCo (2019–2021)
+  - CI/CD pipelines with GitHub Actions
+  - Basic Terraform for infrastructure-as-code
+  - Monitoring with Datadog
+
+CERTIFICATIONS
+  - AWS Cloud Practitioner (2022)
+  - Terraform Associate (2023)
+
+EDUCATION
+  B.S. Computer Science, State University (2019)

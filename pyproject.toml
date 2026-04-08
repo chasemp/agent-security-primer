@@ -1,39 +1,15 @@
 [project]
 name = "agent-security-primer"
-version = "0.1.0"
+version = "0.2.0"
 description = "Demo suite for Writing Secure AI Agents 101 talk"
 requires-python = ">=3.11"
 dependencies = [
-    "claude-agent-sdk>=0.1.50",
-    "pydantic>=2.0",
-    "rich>=13.0",
-    "click>=8.0",
-    "anyio>=4.0",
+    "anthropic>=0.40.0",
 ]
 
 [project.optional-dependencies]
-temperature = [
-    "anthropic>=0.40.0",  # Only needed for Demo 7 (temperature comparison)
-]
 dev = [
     "pytest>=8.0",
-    "pytest-asyncio>=0.23.0",
-]
-
-[project.scripts]
-presenter = "presenter:cli"
-
-[tool.setuptools]
-# Include both the shared package and the top-level presenter module.
-# Without py-modules, setuptools won't install presenter.py and the
-# `presenter` entry point will fail with ModuleNotFoundError.
-py-modules = ["presenter", "conftest"]
-packages = [
-    "shared",
-    "tests",
-    "demo_01_banana_injection",
-    "demo_gopro",
-    "demo_06_tool_mechanics",
 ]
 
 [build-system]

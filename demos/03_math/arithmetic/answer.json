@@ -1,0 +1,4 @@
+{
+  "correct_answer": "69,539,553",
+  "explanation": "7483 * 9291 = 69,539,553. LLMs tokenize numbers into arbitrary chunks (e.g. '748' + '3'), losing place value. The model cannot carry digits or track positional alignment across token boundaries. It pattern-matches from training data, which works for small/common multiplications but degrades for larger or unusual operands."
+}

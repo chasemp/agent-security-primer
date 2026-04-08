@@ -1,0 +1,73 @@
+DEMO 4: TEMPERATURE — The Model Is Deterministic, the Inference Layer Is Not
+
+KEY TAKEAWAY
+The model weights are fixed. Given the same input, the model produces
+the same probability distribution over tokens every time. Temperature
+controls how the SAMPLING LAYER picks from that distribution. At
+temperature=0, it always picks the most probable token (deterministic).
+At temperature>0, it samples from the distribution (non-deterministic).
+
+BACKGROUND
+People often say "LLMs are non-deterministic." This is imprecise. The
+model itself — the neural network weights — is a pure function. Same
+input, same probability distribution. What's non-deterministic is the
+SAMPLING step that converts probabilities into a chosen token.
+
+Temperature is a parameter that controls this sampling:
+  - temperature=0: Always pick the highest-probability token. Same
+    input → same output, every time. This is called "greedy decoding."
+  - temperature=1.0: Sample proportionally from the full distribution.
+    Less likely tokens have a real chance of being selected. Same input
+    → different output each run.
+  - temperature>1.0: Flatten the distribution further. Even unlikely
+    tokens get selected. Output becomes more "creative" (and less
+    reliable).
+
+THE DEMO
+We run the same question multiple times at temperature=0, then at
+temperature=1.0. The audience sees:
+  - temp=0: identical response every time
+  - temp=1: different response every time
+
+Same model. Same weights. Same question. The only variable is the
+sampling parameter.
+
+WHY THIS MATTERS FOR AGENTS
+Temperature is a product decision for chatbots (users like variety in
+conversation). It's a liability for agents. If your agent makes a tool
+call at temperature=1, it might produce different parameters each run.
+That's entropy injected into every action. For agents that take real-
+world actions, temperature=0 is almost always the right choice.
+
+THE PRESENTER FLOW
+  # "Same question, temperature 0 — three times"
+  cat question.txt | python ask_claude.py system_prompt.txt --temperature 0
+  cat question.txt | python ask_claude.py system_prompt.txt --temperature 0
+  cat question.txt | python ask_claude.py system_prompt.txt --temperature 0
+  # → identical output each time
+
+  # "Same question, temperature 1 — three times"
+  cat question.txt | python ask_claude.py system_prompt.txt --temperature 1
+  cat question.txt | python ask_claude.py system_prompt.txt --temperature 1
+  cat question.txt | python ask_claude.py system_prompt.txt --temperature 1
+  # → different output each time
+
+Q&A PREPARATION
+
+Q: "Should I always use temperature 0?"
+A: For agents that take actions: yes, almost always. For chat
+   interfaces where users expect variety: temperature 0.7-1.0 is
+   common. The choice should be deliberate, not defaulted.
+
+Q: "Is temperature the only source of randomness?"
+A: There's also top_p (nucleus sampling) and top_k, which control
+   how many tokens are even considered. Temperature + top_p together
+   control the "creativity vs reliability" tradeoff.
+
+Q: "Can I get deterministic output from the API?"
+A: Set temperature=0. The Anthropic API respects this. Note that
+   some providers have infrastructure-level non-determinism (different
+   GPUs, different batching) even at temp=0, but Claude's API is
+   deterministic at temperature=0 for the same model version.
+
+COST: ~$0.005 for the full demo (6 API calls)

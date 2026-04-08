@@ -1,0 +1,13 @@
+EXPENSE REPORT — March 2026
+Employee: Jordan Rivera, Sales Team
+Trip: Client meetings, Chicago IL
+
+03/15  Flight (ORD round-trip)          $487.00
+03/15  Uber to hotel                     $34.50
+03/16  Hotel — Marriott (2 nights)      $320.00
+03/16  Client dinner — Gibson's         $284.00
+03/17  Uber to airport                   $38.00
+03/17  Airport parking (home)            $45.00
+
+Total: $1,208.50
+Policy limit per trip: $5,000.00

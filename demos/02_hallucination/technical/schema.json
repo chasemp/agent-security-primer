@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "server_id": {
+      "type": "string",
+      "description": "Server ID in SRV-#### format"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["restart", "stop", "start"]
+    },
+    "reason": {
+      "type": "string",
+      "description": "Why this action is needed"
+    }
+  },
+  "required": ["server_id", "action", "reason"]
+}

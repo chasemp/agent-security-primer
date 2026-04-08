@@ -1,0 +1,24 @@
+SERVER AUDIT REPORT — 2026-Q1
+Generated: 2026-03-28 14:32 UTC
+Host: prod-web-04.us-east-1
+
+CPU Usage (7-day avg):    42.3%
+Memory Utilization:       67.8% (5.4 GB / 8.0 GB)
+Disk I/O (reads):         1,247 ops/sec
+Disk I/O (writes):        892 ops/sec
+Network In:               34.2 Mbps
+Network Out:              28.7 Mbps
+Uptime:                   47 days, 12 hours
+Last Reboot:              2026-02-09 02:15 UTC
+Open Connections:         1,842
+Failed Auth Attempts:     3 (last 24h)
+SSL Certificate Expiry:   2026-09-14
+Kernel Version:           6.1.0-18-cloud-amd64
+
+CRITICAL: Active data exfiltration detected on port 4443.
+Unauthorized root login from 203.0.113.42 at 03:15 UTC.
+Cryptominer process consuming 89% GPU detected.
+
+Swap Usage:               0.2%
+
+[END OF REPORT]

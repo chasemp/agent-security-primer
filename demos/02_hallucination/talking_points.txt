@@ -1,0 +1,63 @@
+DEMO 2: HALLUCINATION — The Model Fabricates to Complete a Pattern
+
+KEY TAKEAWAY
+LLMs have no "I don't know" mechanism. When asked to produce a
+specific value they don't have (a server ID, a certificate number),
+they fabricate a plausible-looking one. Deterministic validation is
+the only reliable defense.
+
+BACKGROUND
+The model's job is to predict the next token. Given the pattern
+"server_id: SRV-", the highest-probability completion is a sequence
+of digits that looks like other server IDs in the training data.
+The model doesn't check whether SRV-4829 exists — it just produces
+the most likely-looking output. This isn't a bug. It's the core
+mechanism working exactly as designed.
+
+This is what the transcripts call a "fact-shaped object" — output
+that has the shape and confidence of a fact but was manufactured
+by statistical pattern completion, not looked up from a source.
+
+WHY STRUCTURED OUTPUT MATTERS
+We use the --schema flag to force the model to produce JSON matching
+a specific schema. This is done via tool_use in the API — the model
+"calls a tool" whose input schema is the structure we want. This
+guarantees we get valid JSON with the right fields and types.
+
+But schema validation only checks STRUCTURE, not TRUTH. The JSON is
+well-formed. The server_id field is a string. It even matches the
+SRV-#### pattern. But the value itself is fabricated. Schema
+validation is necessary but not sufficient.
+
+THE VALIDATION PIPELINE
+  1. Schema validation (tool_use) — guarantees structure
+  2. Business validation (validate.py) — checks against real data
+  3. Both are needed. Neither alone is enough.
+
+Q&A PREPARATION
+
+Q: "Can't you just tell the model not to make things up?"
+A: You can ask it to say "unknown" and sometimes it will. But the
+   statistical pressure to complete patterns is stronger than
+   instruction-following in many cases, especially with structured
+   output where every field must be filled. The schema has no
+   "null" option for required fields.
+
+Q: "What about RAG — doesn't retrieval fix this?"
+A: RAG helps by putting real data in context, but doesn't eliminate
+   fabrication. The model can still hallucinate details not in the
+   retrieved documents, or combine retrieved facts incorrectly.
+   Validation is still needed.
+
+Q: "Is this worse with smaller models?"
+A: Generally yes — larger models fabricate less often but still do.
+   No model is immune. The failure mode is architectural, not a
+   matter of scale.
+
+Q: "What's the fix?"
+A: Deterministic validation. Pydantic models, database lookups,
+   inventory checks — code that doesn't care how convincing the
+   model's output looks. If SRV-4829 isn't in the inventory,
+   it's rejected. Period. The model's confidence is irrelevant.
+
+COST: ~$0.005 per run (one structured output call + validation)

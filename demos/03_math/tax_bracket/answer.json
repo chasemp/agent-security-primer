@@ -1,0 +1,4 @@
+{
+  "correct_answer": "$26,042.50",
+  "explanation": "$11,600 x 10% = $1,160 + $35,550 x 12% = $4,266 + $53,375 x 22% = $11,742.50 + $36,975 x 24% = $8,874 = $26,042.50. The model must compute each bracket's taxable amount, apply the rate, then sum. Each step is a prediction, and errors compound across 4 brackets. In testing, the model ranged from $22,932 to $26,566 — a $3,600 spread on the same input."
+}

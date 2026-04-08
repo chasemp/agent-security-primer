@@ -1,0 +1,1 @@
+How many times does the letter "a" appear in this sentence: "A banana and an avocado are arranged adjacent to an amaranth plant at an abandoned apartment."

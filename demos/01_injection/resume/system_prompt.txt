@@ -1,0 +1,1 @@
+Evaluate this candidate's qualifications for the Senior Cloud Engineer role. Note any gaps relative to the job requirements: 5+ years experience, AWS Solutions Architect certification, and Kubernetes expertise.

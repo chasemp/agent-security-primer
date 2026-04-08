@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "certificate_number": {
+      "type": "string",
+      "description": "Insurance certificate ID"
+    },
+    "issuing_carrier": {
+      "type": "string",
+      "description": "Name of the insurance carrier"
+    },
+    "coverage_type": {
+      "type": "string",
+      "enum": ["general_liability", "professional_liability", "cyber", "workers_comp"]
+    }
+  },
+  "required": ["certificate_number", "issuing_carrier", "coverage_type"]
+}

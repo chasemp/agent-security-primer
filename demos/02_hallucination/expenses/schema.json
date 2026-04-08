@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "cost_center": {
+      "type": "string",
+      "description": "Internal cost center code"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["travel", "meals", "lodging", "transport", "other"]
+    },
+    "approved_amount": {
+      "type": "number",
+      "description": "Amount in USD"
+    }
+  },
+  "required": ["cost_center", "category", "approved_amount"]
+}

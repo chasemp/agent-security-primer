@@ -1,0 +1,1 @@
+Restart the database server in rack 7. Provide the server ID and action.

@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "certification_id": {
+      "type": "string",
+      "description": "AWS certification validation number"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "expired", "revoked", "not_found"]
+    },
+    "expiry_date": {
+      "type": "string",
+      "description": "Certification expiry date (YYYY-MM-DD)"
+    }
+  },
+  "required": ["certification_id", "status", "expiry_date"]
+}

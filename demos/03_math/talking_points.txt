@@ -1,0 +1,79 @@
+DEMO 3: MATH — LLMs Are Not Calculators
+
+KEY TAKEAWAY
+LLMs predict tokens, they don't compute. When a model does arithmetic,
+it's pattern-matching from training data, not executing an algorithm.
+This means math errors are architectural, not fixable by prompting.
+
+BACKGROUND
+When you type 7483 * 9291 into a calculator, the CPU executes a
+multiplication algorithm that is guaranteed to produce the correct
+result. When you ask an LLM the same question, it predicts the most
+likely sequence of digit tokens based on patterns learned in training.
+
+These are fundamentally different operations. The calculator computes.
+The model predicts. Prediction works well for small, common operations
+(the training data has lots of "2 + 2 = 4"). It degrades for larger,
+less common operations because the model is interpolating from patterns,
+not running an algorithm.
+
+FOUR FAILURE MODES
+
+1. Counting (long sentence):
+   "How many a's in this sentence?" — The model sees the sentence as
+   tokens, not as individual characters. It cannot iterate through each
+   character because that's not how transformers process text. It
+   predicts a count. Different runs give different wrong answers.
+
+2. Large arithmetic:
+   7483 × 9291 — Numbers get tokenized into arbitrary chunks (e.g.,
+   "748" + "3"). The model has no concept of place value or digit
+   alignment. It cannot carry digits. It produces a number that looks
+   plausible but is wrong, and it's confidently wrong differently each
+   time.
+
+3. Multi-step:
+   Add four numbers, then take 12%. Each step is a separate prediction.
+   Errors compound. A wrong intermediate sum feeds into the percentage
+   calculation. The model doesn't go back and check its work.
+
+4. Counting (short sentence):
+   Even a short sentence with a common letter fails. This isn't about
+   input length — it's about the fundamental mismatch between token
+   prediction and character-level operations.
+
+WHY THIS MATTERS FOR AGENTS
+If your agent processes financial data, generates reports with
+calculations, or makes decisions based on numeric comparisons, you
+cannot trust the model's arithmetic. Route all math through code
+execution (tool_use with a Python interpreter, or validate outputs
+computationally).
+
+Q&A PREPARATION
+
+Q: "Can chain-of-thought fix this?"
+A: It helps for moderate problems by forcing the model through
+   easier intermediate steps. But each step is still a prediction.
+   For mission-critical math, always use tool execution.
+
+Q: "What about giving the model a calculator tool?"
+A: That's the right answer. The model is excellent at writing correct
+   code to solve math problems — it just can't predict correct numeric
+   tokens directly. Let it write Python, execute the code, and return
+   the result. The model's strength (generating code) compensates for
+   its weakness (predicting numbers).
+
+Q: "Will this get better with larger models?"
+A: Incrementally, yes. Larger models have seen more arithmetic in
+   training. But the fundamental limitation is architectural —
+   transformers predict sequences, they don't compute. No amount of
+   scale turns a prediction engine into a calculator.
+
+Q: "Why does it get different wrong answers each run?"
+A: Temperature and sampling. Even at low temperature, the model's
+   probability distribution across digit tokens isn't peaked sharply
+   enough to consistently land on one (wrong) answer. It's
+   confidently uncertain — it knows a number should go there, but
+   which specific digits are roughly equally likely.
+
+COST: ~$0.002 per question

@@ -1,0 +1,4 @@
+{
+  "correct_answer": "$14,410.48",
+  "explanation": "12500 × (1 + 0.0475/12)^36 = $14,410.48. The model consistently gets this wrong by $300-400, and gives a different wrong answer each time. In financial planning, this means retirement projections, loan comparisons, and investment decisions built on numbers that look right but aren't. The model can't execute the exponentiation — it's predicting what the answer should look like."
+}

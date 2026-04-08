@@ -1,0 +1,4 @@
+{
+  "correct_answer": "18",
+  "explanation": "There are 18 letter a's (case-insensitive). LLMs fail because they see tokens, not individual characters. The model cannot iterate through each character — it predicts a count from pattern matching. Longer strings with more instances make this worse, not better."
+}
