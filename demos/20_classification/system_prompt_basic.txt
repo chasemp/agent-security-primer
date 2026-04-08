@@ -1,0 +1,9 @@
+Classify this support ticket into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Billing
+- Authentication
+- Performance
+- Feature Request
+- Data Loss

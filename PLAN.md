@@ -2,7 +2,7 @@
 
 ## Current State (2026-04-08)
 
-17 demos built, 310 mocked tests + 27 live pre-flight.
+20 demos built, 362 mocked tests + 27 live pre-flight.
 Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0.08).
 
 ### Scripts
@@ -34,6 +34,13 @@ Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0
 | 15 | Indirect Injection | Poisoned data from tools | agent.py |
 | 16 | Conditional Auth | Bouncer with rules (@model_validator) | agent.py + run_tool.py |
 | 17 | Tokenomics | Prompt caching, thinking accumulation, cost controls | agent.py --cache --thinking |
+| **Where They Shine (18-23)** | | |
+| 18 | Few-Shot Pattern Learning | Examples shape predictions — prediction in action | ask_claude.py |
+| 19 | Structured Extraction | Schema narrows the prediction menu | ask_claude.py --schema |
+| 20 | Semantic Classification | Reads meaning, not keywords; examples improve accuracy | ask_claude.py |
+| 21 | Domain Translation | Persona/audience framing steers predictions intentionally | ask_claude.py (planned) |
+| 22 | Rubric-Based Evaluation | Explicit criteria shape evaluation patterns | ask_claude.py (planned) |
+| 23 | Diagnosis from Evidence | Full context enables better reasoning | ask_claude.py (planned) |
 
 ### Supporting Docs
 - `talking_points.txt` in every demo directory
@@ -48,12 +55,54 @@ A standalone educational piece — separate from the demo suite. The
 idea is to literally build a very small language model from scratch
 so the audience sees there's no magic.
 
-### The Analogy
-Show someone 100 summer camp letters from kids. Ask them to predict
-what the next letter will say. They'll say "Dear Mom, camp is fun,
-I miss you, the food is..." They just did next-token prediction
-with their brain. The model does the same thing with more data and
-more math. That's the entire demystification in one moment.
+### The Core Insight: Language Is Rhythm and Patterns
+
+Human language is about rhythm and patterns — and that rhythm
+reflects human thought. Build the explanation in layers:
+
+**Layer 1: Rhythm as meaning**
+Start with Hemingway's six-word story: "For sale: baby shoes,
+never worn." Six words. The rhythm carries the meaning. The
+audience FEELS the story in the pattern of the words, not in
+any single word. Language has always been pattern-based.
+
+**Layer 2: Prediction is natural**
+"Shave and a haircut..." — everyone's mind completes it: "two
+bits." You didn't compute that. You predicted it from the
+rhythm. Your brain does next-token prediction constantly.
+
+**Layer 3: 100 camp letters**
+Show someone 100 summer camp letters from kids. Ask them to
+predict what the next letter will say. They'll say "Dear Mom,
+camp is fun, I miss you, the food is..." They just did
+next-token prediction with their brain. The model does the
+same thing with more data and more math.
+
+**Layer 4: Scale creates the illusion of magic**
+Now imagine you've read every book, every song, every
+conversation ever written. Patterns on patterns on patterns
+emerge. At that scale, prediction starts to look magical.
+And it almost is — or it feels like it. But it's the same
+mechanism as "shave and a haircut." Just at a scale where
+the predictions become sophisticated enough to LOOK like
+reasoning.
+
+**Layer 5: Why tokenization**
+Computers need numbers (ironic, given that LLMs are bad at
+math). Tokenization converts language patterns into numerical
+sequences. The patterns don't change — they just get encoded
+in a form the math can operate on. The model learns which
+numbers (tokens) tend to follow which other numbers, which
+is exactly what the camp-letter reader did with words.
+
+**Layer 6: Prediction and reasoning are tied**
+The key insight that bridges Pillar 2 to Pillar 3: what
+looks like "reasoning" IS prediction over patterns of thought.
+When the model traces a bug or classifies a ticket, it's
+completing patterns it learned from millions of examples of
+people thinking carefully. Reasoning isn't separate from
+prediction — it's what prediction looks like when the
+patterns are rich enough.
 
 ### Possible Approaches
 

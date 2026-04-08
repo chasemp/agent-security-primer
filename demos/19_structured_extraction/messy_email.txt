@@ -1,0 +1,70 @@
+---------- Forwarded message ----------
+From: Sarah Chen <schen@example.com>
+Date: Mon, Apr 7, 2026, 4:47 PM
+Subject: Re: Re: Re: Q2 launch timeline???
+To: Platform Team <platform@example.com>
+
+Hey all,
+
+Sorry for the late reply — was heads down on the auth migration
+all week. Quick update from my end:
+
+The OAuth2 refactor is ~80% done. Main blocker is that the
+token refresh logic needs to handle the edge case where the
+session store is cold (Redis restart). Jake found this on
+Friday when staging went down for 20 min. I think we need 2
+more days on that, so targeting Wednesday Apr 9 for the PR.
+
+@Mike — can you review the PR by Thursday? I know you're
+swamped with the billing thing but this blocks the launch.
+
+@Dana — the API docs are out of date. The new /auth/token
+endpoint returns a different shape now (added refresh_token
+field). Can you update the public docs before we cut the
+release? Ideally by Friday Apr 11.
+
+Also — who's owning the load test? Last standup nobody
+volunteered. We need to run it against staging before Apr 14
+or we miss the launch window. The test plan is in Confluence
+(search "Q2 load test plan").
+
+Launch target is still April 15 per the last planning meeting
+but honestly I think Apr 17 is more realistic given the auth
+blocker. Let's discuss in tomorrow's standup @ 10am.
+
+Cost note: the staging environment for load testing is ~$200/day
+on the current instance size. We should spin it down after the
+test. Last time someone left it running for 2 weeks and finance
+flagged it.
+
+Thanks,
+Sarah
+
+---
+From: Mike Torres <mtorres@example.com>
+Date: Mon, Apr 7, 2026, 5:12 PM
+
+Got it. I can review the auth PR Thursday morning. Billing
+migration is actually ahead of schedule so I have bandwidth.
+
+Re: load test — I'll own it if nobody else wants to. But I
+need the updated API docs first (Dana?).
+
+-M
+
+---
+From: Dana Park <dpark@example.com>
+Date: Mon, Apr 7, 2026, 5:30 PM
+
+Docs update: already started, will have it done by Wed Apr 9.
+The new response shape is documented in the PR description so
+I'm pulling from there.
+
+Load test: Mike, go for it. I'll make sure docs are ready
+before you need them.
+
+One concern — the Confluence test plan references the OLD auth
+flow. Someone needs to update the test scenarios for OAuth2.
+Sarah, can you or Jake handle that?
+
+-D

@@ -1,0 +1,3 @@
+The API response times have gone from 200ms to over 4 seconds
+since yesterday's deploy. Our monitoring shows p99 latency
+spiked at 3pm UTC. Multiple customers are reporting timeouts.

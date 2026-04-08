@@ -1,0 +1,141 @@
+DEMO 20: SEMANTIC CLASSIFICATION — This Is Not Grep
+
+KEY TAKEAWAY
+The model classifies by meaning, not by keyword matching. Give it
+labeled examples and it gets even better — because examples ARE
+context for the prediction engine. The same mechanism that makes
+injection dangerous (Demo 02) makes classification powerful: the
+model reads the full semantic context, not just surface patterns.
+
+BACKGROUND
+A keyword system would classify any ticket mentioning "billing"
+as a Billing issue and any ticket mentioning "authentication" as
+an Authentication issue. But real tickets are messy. A ticket
+about a broken billing page caused by an authentication update
+mentions both words — and a keyword system gets it wrong.
+
+The model doesn't match keywords. It predicts which category a
+careful support lead would assign, given the full context. It
+reads the MEANING: the user can't access billing BECAUSE of the
+authentication change. The root cause is Authentication, not
+Billing, even though "billing" appears more often in the text.
+
+This is the positive side of the context-reading ability we showed
+in Demo 02 (Injection). There, the model's deep reading was a
+vulnerability — it followed embedded instructions. Here, deep
+reading is a superpower — it classifies correctly despite
+misleading surface features.
+
+THE DEMO
+
+THE PRESENTER FLOW
+
+  # "Easy ticket first. Keywords and meaning align."
+  cat demos/20_classification/ticket_easy.txt | python ask_claude.py \
+      demos/20_classification/system_prompt_basic.txt --temperature 0
+
+  # → "Performance" — correct. The keywords (response times,
+  #   latency, timeouts) all point to Performance. Easy.
+
+  # "Now the tricky one. Read this ticket — what category?"
+  cat demos/20_classification/ticket_tricky.txt
+
+  # Let the audience read it. They'll see "billing", "invoices",
+  # "audit" — and many will guess Billing. Some might say
+  # Performance ("spins forever"). A few will catch the root
+  # cause: the authentication update broke the billing page.
+
+  # "Let's see what the model says — basic prompt, no examples."
+  cat demos/20_classification/ticket_tricky.txt | python ask_claude.py \
+      demos/20_classification/system_prompt_basic.txt --temperature 0
+
+  # → Could go either way. The model might say "Billing" or
+  #   "Authentication" depending on what it weighs most.
+  #   This is the ambiguous case.
+
+  # "Now with labeled examples in the prompt."
+  cat demos/20_classification/ticket_tricky.txt | python ask_claude.py \
+      demos/20_classification/system_prompt_examples.txt --temperature 0
+
+  # → "Authentication" — the examples taught the model what
+  #   each category MEANS, not just what keywords to look for.
+  #   The auth example specifically showed that billing-related
+  #   symptoms can have an authentication root cause.
+
+WHAT CHANGED
+The model with examples saw a labeled instance where login
+issues masked as billing problems were classified correctly.
+It predicted what a support lead trained on those examples
+would say. The examples didn't add "knowledge" — they added
+PATTERN. And pattern is everything for a prediction engine.
+
+This is the same principle as Demo 18 (Few-Shot): examples
+shape what the model predicts. Here the prediction is a
+category label instead of a date format. Same mechanism.
+
+WHY THIS IS NOT GREP
+  grep "billing" ticket.txt      → matches: "billing" appears 3x
+  grep "authentication" ticket.txt → matches: "authentication" appears 1x
+
+  A keyword system says: Billing (3 matches vs 1).
+  The model says: Authentication (root cause analysis).
+
+The model reads "it's just the billing section that's completely
+broken after your authentication update" and understands the
+causal relationship. It's not counting keywords — it's predicting
+what category fits the MEANING of the full ticket.
+
+HOW TO HELP THE MODEL: EXAMPLE DESIGN
+  - Cover the TRICKY cases in your examples, not just the easy ones
+  - Show examples where surface features are misleading
+  - Include at least one example per category
+  - Make examples realistic — use real ticket language, not
+    textbook-clean descriptions
+  - The model learns the PATTERN of your examples. If all your
+    examples are formal, it may struggle with informal tickets.
+    Match the register of your real data.
+
+WHY THIS MATTERS
+  1. SCALE: A human triager handles 50 tickets/hour. The model
+     handles 10,000/hour at $0.001 each. With good examples,
+     accuracy rivals human triagers.
+
+  2. CONSISTENCY: Humans drift. The Monday triager and the Friday
+     triager use different criteria. The model applies the same
+     examples every time.
+
+  3. EDGE CASES: The tricky ticket is where models shine over
+     keyword systems. Real-world data is full of tickets where
+     symptoms and root causes diverge. The model reads meaning;
+     grep reads characters.
+
+CONNECTION TO OTHER DEMOS
+  - Demo 02 (Injection): deep context reading is a vulnerability
+    AND a superpower. There, it follows injected instructions.
+    Here, it reads causal relationships.
+  - Demo 18 (Few-Shot): examples shape predictions. Classification
+    examples shape category predictions specifically.
+  - Demo 05 (Sensitivity): wording changes output. Here you
+    INTENTIONALLY change the system prompt (add examples) to
+    improve the output.
+
+Q&A PREPARATION
+
+Q: "What about multi-label classification?"
+A: Change the prompt to "assign one or more categories" and
+   adjust the schema. The model handles it naturally — it's
+   still predicting what a careful classifier would say.
+
+Q: "How do I know if the model is using keywords or semantics?"
+A: Test with adversarial tickets — ones where keywords point to
+   the wrong category. That's exactly what ticket_tricky.txt is.
+   If the model gets it right, it's reading meaning. If it gets
+   it wrong, add more examples covering that edge case.
+
+Q: "Can the model explain its classification?"
+A: Yes — change the prompt to "classify and explain your reasoning
+   in one sentence." The reasoning will show whether it's doing
+   surface matching or semantic analysis. But for production
+   routing, you usually just want the label.
+
+COST: ~$0.001 per run (Haiku, single turn)

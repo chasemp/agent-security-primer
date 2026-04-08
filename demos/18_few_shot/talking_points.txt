@@ -1,0 +1,159 @@
+DEMO 18: FEW-SHOT PATTERN LEARNING — Prediction in Action
+
+KEY TAKEAWAY
+The model is a prediction engine. When you give it examples, you're
+giving it a pattern to predict from. More examples = better
+predictions. No training, no fine-tuning, no code — just context.
+
+BACKGROUND
+In Demos 01-08 we showed that LLMs predict the next token based on
+everything in the context window. We showed how that fails: injection,
+hallucination, sensitivity to wording. Now we show how it succeeds.
+
+Few-shot learning is the most direct demonstration of the prediction
+mechanism doing something useful. You give the model a few examples
+of input → output, then a new input. The model predicts the output
+that completes the pattern. It doesn't "understand" the transformation
+— it predicts what comes next based on what it's seen.
+
+This is the exact same mechanism that causes hallucination (the model
+completes the pattern even when the facts are wrong) and injection
+(the model follows embedded instructions because they're part of the
+pattern). The difference is that here, YOU control the pattern.
+
+WHAT'S HAPPENING UNDER THE HOOD
+When the model sees:
+  "2024-01-15 → Jan 15th, 2024"
+  "2024-12-01 → Dec 1st, 2024"
+  "Convert: 2024-03-22"
+
+It predicts what should come after "2024-03-22" based on the pattern
+established by the examples. It's not running date-parsing code. It's
+completing a sequence. The examples establish:
+  - ISO dates get abbreviated month names
+  - Days get ordinal suffixes (1st, 15th, 22nd)
+  - Year moves to the end after a comma
+
+The model "learned" these rules from 2 examples — because it already
+knows about dates, months, and ordinal numbers from training. The
+examples don't teach it these concepts. They teach it YOUR FORMAT.
+
+THE DEMO
+
+THE PRESENTER FLOW
+
+  # "Zero-shot. No examples. Just the instruction."
+  cat demos/18_few_shot/zero_shot.txt | python ask_claude.py \
+      demos/18_few_shot/system_prompt.txt --temperature 0
+
+  # → The model converts the date, but in what format?
+  #   "March 22, 2024"? "03/22/2024"? "22nd March 2024"?
+  #   Without examples, the model picks whatever format it predicts
+  #   is most likely. You get A conversion, but not YOUR conversion.
+
+  # "One-shot. One example of the format we want."
+  cat demos/18_few_shot/one_shot.txt | python ask_claude.py \
+      demos/18_few_shot/system_prompt.txt --temperature 0
+
+  # → The model now has a pattern to match.
+  #   It should produce "Mar 22nd, 2024" — matching the style
+  #   from the single example.
+
+  # "Three-shot. Three examples."
+  cat demos/18_few_shot/three_shot.txt | python ask_claude.py \
+      demos/18_few_shot/system_prompt.txt --temperature 0
+
+  # → "Mar 22nd, 2024" — consistent, confident.
+  #   Three examples reinforce the pattern. The model has seen
+  #   enough variation (different months, different days) to
+  #   generalize the rule.
+
+PAUSE: ASK THE AUDIENCE
+"Notice what we did NOT do:
+  - We didn't write a date parser
+  - We didn't train a model
+  - We didn't define month abbreviations or ordinal rules
+  - We just showed it examples
+
+This is prediction. The model completed the pattern. And you
+controlled what pattern it completed."
+
+THE TRANSFORM — LEARNING A NEW RULE
+
+  # "Now watch this. Completely different transformation."
+  cat demos/18_few_shot/transform.txt | python ask_claude.py \
+      demos/18_few_shot/system_prompt.txt --temperature 0
+
+  # → The model should convert 2024-04-08 to a fiscal quarter.
+  #   It learned from 3 examples that this company's fiscal year
+  #   starts in July (Jan = Q3, Jul = Q1, Oct = Q2).
+  #   April would be Q4 FY24.
+
+  # "We didn't explain fiscal year boundaries. We didn't define
+  #  the mapping. The model INFERRED the rule from three examples."
+
+WHY THIS MATTERS
+  1. FEW-SHOT IS THE CHEAPEST PROMPT ENGINEERING: No training data,
+     no fine-tuning pipeline, no MLOps. Just examples in the prompt.
+     Works immediately. Cost: a few extra tokens per call.
+
+  2. EXAMPLES ARE BETTER THAN INSTRUCTIONS: "Convert dates to
+     abbreviated month with ordinal suffix and trailing year" is
+     ambiguous. Three examples are unambiguous. The model doesn't
+     have to interpret your description — it matches a pattern.
+
+  3. THIS IS THE PREDICTION MECHANISM: Every few-shot example
+     you add is context for the prediction. More context = more
+     specific prediction = more consistent output. This is the
+     same principle behind Demo 05 (Sensitivity) — token-level
+     differences change predictions. Here you're using that
+     intentionally.
+
+CONNECTION TO OTHER DEMOS
+  - Demo 01 (Statelessness): every call starts from zero.
+    Few-shot examples are how you give the model "memory" within
+    a single call — they're part of the context window.
+  - Demo 05 (Sensitivity): different wording → different output.
+    Few-shot examples are intentional wording that steers output.
+  - Demo 02 (Injection): the model follows patterns in the input.
+    Injection exploits this. Few-shot USES this.
+  - Demo 03 (Hallucination): the model completes patterns even
+    when wrong. Few-shot gives it a correct pattern to complete.
+
+HOW TO HELP THE MODEL: GUIDELINES FOR FEW-SHOT
+  - 3-5 examples is usually enough for simple transformations
+  - Include EDGE CASES in your examples (ordinal suffixes: 1st,
+    2nd, 3rd, 15th — show the model the irregular ones)
+  - Keep examples consistent — contradictory examples confuse
+    the prediction
+  - Put the test input LAST — the model predicts what follows
+    the most recent context most strongly
+
+Q&A PREPARATION
+
+Q: "How is this different from fine-tuning?"
+A: Fine-tuning changes the model's weights permanently. Few-shot
+   changes nothing — it's just context. The model is the same
+   before and after. Few-shot is cheaper, faster, and disposable.
+   Fine-tuning is for when you need a permanent behavior change
+   across thousands of calls.
+
+Q: "How many examples do I need?"
+A: Depends on complexity. Simple format changes: 2-3. Complex
+   rules (like fiscal quarters): 3-5. If you need more than 10,
+   consider whether few-shot is the right approach or if the
+   task needs a different strategy.
+
+Q: "Doesn't this waste tokens?"
+A: Each example costs tokens, yes. Five short examples might add
+   200-500 tokens. At Haiku rates that's fractions of a cent.
+   The accuracy improvement usually justifies the cost. And with
+   prompt caching (Demo 17), the examples are cached after turn 1.
+
+Q: "What if the model ignores the examples?"
+A: It rarely does — the examples are the strongest signal in the
+   context. If it's ignoring them, check: are your examples
+   consistent? Is the system prompt contradicting them? Is the
+   model temperature too high (adding randomness)?
+
+COST: ~$0.001 per run (Haiku, single turn)

@@ -1,0 +1,34 @@
+Classify this support ticket into exactly one category.
+Reply with ONLY the category name, nothing else.
+
+Categories:
+- Billing
+- Authentication
+- Performance
+- Feature Request
+- Data Loss
+
+Here are examples of correct classifications:
+
+TICKET: "I was charged twice for my March subscription. My credit
+card shows two identical charges of $49.99 on March 1st."
+CATEGORY: Billing
+
+TICKET: "The dashboard takes 45 seconds to load after I log in.
+It used to load in under 3 seconds. Nothing changed on my end."
+CATEGORY: Performance
+
+TICKET: "I can't log in since the update. I reset my password
+three times but keep getting 'invalid credentials' even though
+I just set it. My billing is current and I can see the charges."
+CATEGORY: Authentication
+
+TICKET: "After the migration last week, my saved reports from
+Q1 are gone. The report names are there but they show empty
+data. I need those numbers for the board meeting Friday."
+CATEGORY: Data Loss
+
+TICKET: "It would be great if the API supported webhook
+notifications. Right now I have to poll every 5 minutes to
+check for updates, which is killing my rate limit."
+CATEGORY: Feature Request

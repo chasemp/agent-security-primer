@@ -1,0 +1,7 @@
+Ever since you updated the login page last Tuesday, my team
+can't access any of our billing history or download invoices.
+We click "Billing" in the sidebar and it just spins forever.
+My boss needs the Q1 invoices for the audit by Friday. Three
+of us have tried different browsers and cleared our caches.
+The rest of the app works fine — it's just the billing section
+that's completely broken after your authentication update.

@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "description": "The project or initiative being discussed"
+    },
+    "launch_date": {
+      "type": "string",
+      "description": "The target launch date (YYYY-MM-DD)"
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {"type": "string"},
+          "owner": {"type": "string"},
+          "target_date": {"type": "string", "description": "YYYY-MM-DD"}
+        },
+        "required": ["description", "owner"]
+      },
+      "description": "Issues blocking the launch"
+    },
+    "action_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task": {"type": "string"},
+          "owner": {"type": "string"},
+          "due_date": {"type": "string", "description": "YYYY-MM-DD"}
+        },
+        "required": ["task", "owner"]
+      },
+      "description": "Tasks assigned to specific people"
+    },
+    "risks": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Identified risks or concerns"
+    }
+  },
+  "required": ["project", "launch_date", "blockers", "action_items"]
+}

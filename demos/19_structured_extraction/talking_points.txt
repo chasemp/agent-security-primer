@@ -1,0 +1,155 @@
+DEMO 19: STRUCTURED EXTRACTION — Order from Chaos
+
+KEY TAKEAWAY
+Give the model a wall of messy text and a schema. It extracts
+structured data — names, dates, action items, blockers — as clean
+JSON. The schema doesn't just format the output; it narrows the
+prediction menu. The model predicts what a careful reader would
+extract given these specific fields to fill.
+
+BACKGROUND
+In Demo 03 (Hallucination) we showed the model FABRICATING data
+into a schema — filling in fields with plausible-sounding values
+that didn't exist. Here we flip it: the data IS in the text, and
+the model EXTRACTS it.
+
+Same mechanism. The model predicts the most likely value for each
+field given the context. In Demo 03, the context had no real data,
+so the model hallucinated. Here, the context has a real email
+thread full of real data, so the model extracts correctly.
+
+The difference isn't the model — it's the input. When you give it
+real data to predict from, prediction works. When you don't, it
+fabricates. This is the central lesson of the talk: the model is
+always predicting. You control what it predicts FROM.
+
+HOW THE SCHEMA WORKS
+The --schema flag uses a technique called "forced tool use." The
+API receives a tool definition whose input_schema is your JSON
+schema. The model is forced to "call" this tool, which means its
+output MUST be valid JSON matching the schema.
+
+This is constrained decoding in action (see inference pipeline in
+meta_talking_points.txt). The inference engine masks tokens that
+would produce invalid JSON. The model can only predict tokens that
+fit the schema. The prediction menu is narrowed from "any text" to
+"valid JSON matching these fields."
+
+THE DEMO
+
+THE PRESENTER FLOW
+
+  # "Here's a messy email thread. Three people, forwarded replies,
+  #  informal language. A real Monday afternoon."
+  cat demos/19_structured_extraction/messy_email.txt
+
+  # "First, without a schema — just ask the model to extract."
+  cat demos/19_structured_extraction/messy_email.txt | python ask_claude.py \
+      demos/19_structured_extraction/system_prompt.txt
+
+  # → The model writes prose. It might list action items in
+  #   bullet points, or write a paragraph summary. The format
+  #   is whatever the model predicts is most likely. Useful,
+  #   but not machine-readable. Not consistent across runs.
+
+  # "Now with a schema — same email, structured output."
+  cat demos/19_structured_extraction/messy_email.txt | python ask_claude.py \
+      demos/19_structured_extraction/system_prompt.txt \
+      --schema demos/19_structured_extraction/schema.json
+
+  # → Clean JSON:
+  #   {
+  #     "project": "Q2 Launch / OAuth2 Migration",
+  #     "launch_date": "2026-04-17",
+  #     "blockers": [
+  #       {"description": "Token refresh for cold session store",
+  #        "owner": "Sarah Chen", "target_date": "2026-04-09"},
+  #       {"description": "API docs out of date",
+  #        "owner": "Dana Park", "target_date": "2026-04-09"}
+  #     ],
+  #     "action_items": [
+  #       {"task": "Review auth PR", "owner": "Mike Torres",
+  #        "due_date": "2026-04-10"},
+  #       {"task": "Run load test against staging",
+  #        "owner": "Mike Torres", "due_date": "2026-04-14"},
+  #       ...
+  #     ],
+  #     "risks": [
+  #       "Launch date may slip from Apr 15 to Apr 17",
+  #       "Staging environment costs ~$200/day if left running",
+  #       "Confluence test plan references old auth flow"
+  #     ]
+  #   }
+
+PAUSE: WHAT JUST HAPPENED
+"The model read a chaotic email thread and produced structured,
+machine-readable JSON. It identified:
+  - The project name (not stated explicitly — inferred from context)
+  - Blockers vs. action items (different categories)
+  - Who owns what (extracted from @mentions and responses)
+  - Due dates (parsed from natural language dates)
+  - Risks (synthesized from concerns spread across 3 emails)
+
+It didn't search a database. It didn't run regex. It predicted
+what a careful project manager would extract given these fields."
+
+WITHOUT SCHEMA vs. WITH SCHEMA
+  Without: the model predicts "what helpful text comes next."
+    → Prose summary, variable format, can't be parsed by code.
+  With:    the model predicts "what value fills this field."
+    → Structured JSON, consistent format, machine-readable.
+
+The schema doesn't make the model smarter. It narrows what the
+model is allowed to predict. Instead of predicting any token,
+it predicts tokens that produce valid JSON for each field.
+
+WHY THIS MATTERS
+  1. VOLUME: A human can read one email thread. The model can
+     process 1000 per hour at $0.001 each. Structured extraction
+     turns unstructured data into queryable data at scale.
+
+  2. CONSISTENCY: The schema guarantees the same fields every time.
+     No "sometimes it lists 3 action items, sometimes 5 as prose."
+     The output is always the same shape.
+
+  3. COMPOSABILITY: JSON output feeds directly into code. Store it,
+     query it, pipe it to another tool, trigger alerts. The model
+     becomes a data pipeline component, not just a chatbot.
+
+CONNECTION TO OTHER DEMOS
+  - Demo 03 (Hallucination): same schema mechanism, opposite input.
+    There: no real data → fabrication. Here: real data → extraction.
+  - Demo 18 (Few-Shot): examples shape predictions. Schema shapes
+    predictions by constraining the output space.
+  - Demo 10 (Scoped Tool): Pydantic validates tool inputs. Schema
+    validates model outputs. Both are bouncers at boundaries.
+
+HOW TO HELP THE MODEL: SCHEMA DESIGN TIPS
+  - Name fields descriptively — the model reads them
+  - Add "description" to each property — it's prompt engineering
+    inside the schema
+  - Use enums for constrained choices (status, priority, category)
+  - Put nested objects in arrays for repeating structures
+  - Test with real-world messy data, not clean samples
+
+Q&A PREPARATION
+
+Q: "What if the email doesn't have one of the required fields?"
+A: The model will still fill it — with its best prediction given
+   the context. If the data truly isn't there, it may hallucinate.
+   Make fields optional (remove from "required") if they might not
+   be present. This connects back to Demo 03: schema enforcement
+   guarantees structure, not truth.
+
+Q: "Does this work with Opus?"
+A: Opus doesn't have native structured output, but the --schema
+   flag uses forced tool_use, which works on all Claude models.
+   The model is forced to "call a tool" whose schema matches your
+   JSON structure. Same result, different mechanism.
+
+Q: "How big can the input be?"
+A: Up to the context window minus output tokens. For Claude models,
+   that's 100K-200K tokens — roughly 300-600 pages of text. The
+   model can extract from very large documents in a single call.
+
+COST: ~$0.002 per run (Haiku, single turn with schema)
