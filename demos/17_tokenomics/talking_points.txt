@@ -160,6 +160,30 @@ THE THREE LAYERS COMBINED (10-turn loop on Opus, this demo)
   Add conversation caching and the savings grow with each turn,
   because the cached prefix includes all prior messages too.
 
+THE 4-BLOCK LIMIT
+The API allows at most 4 cache_control blocks per request. If
+you exceed this, you get an error. This means you have to be
+strategic about where you place your breakpoints:
+
+  Block 1: System prompt
+  Block 2: Last tool definition
+  Block 3: Latest user message (tool results)
+  Block 4: (spare — for future use or additional caching)
+
+The gotcha: if you naively add cache_control to EVERY user
+message in the conversation history, you'll exceed 4 blocks by
+turn 3. The fix: only the MOST RECENT user message gets
+cache_control. Strip it from prior messages before each API call.
+
+Our agent.py --cache flag handles this automatically. On each
+turn it removes cache_control from all prior user messages and
+adds it to the latest one. The cached prefix grows: the API
+caches everything up to the latest breakpoint, which includes
+all prior messages.
+
+This is a real constraint you'll hit in production. Document it,
+test for it, and manage the breakpoints intentionally.
+
 THE CACHE TTL
 Cache entries last 5 minutes, extended on each hit. An active agent
 loop that makes calls every few seconds stays cached indefinitely.

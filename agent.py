@@ -135,6 +135,13 @@ def run_agent(system_prompt, task, tools_module, model="claude-haiku-4-5",
         messages.append({"role": "assistant", "content": response.content})
 
         if cache and tool_results:
+            # Strip cache_control from all prior user messages to stay within
+            # the API's 4 cache_control block limit (system + tools + latest user)
+            for msg in messages:
+                if msg["role"] == "user" and isinstance(msg["content"], list):
+                    for item in msg["content"]:
+                        if isinstance(item, dict):
+                            item.pop("cache_control", None)
             tool_results[-1]["cache_control"] = {"type": "ephemeral"}
 
         messages.append({"role": "user", "content": tool_results})

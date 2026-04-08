@@ -574,9 +574,49 @@ class TestCacheMode:
 
         assert result["total_cache_read_tokens"] == 2000
 
+    def test_cache_control_only_on_latest_user_message(self) -> None:
+        """Only the LATEST user message should have cache_control.
+        The API allows at most 4 cache_control blocks per request.
+        We use 3: system prompt + last tool def + latest user message.
+        Prior user messages must have cache_control stripped."""
+        from agent import run_agent
+
+        with patch("agent.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.side_effect = [
+                _make_tool_use_response("echo", {"message": "a"}),
+                _make_tool_use_response("echo", {"message": "b"}, tool_id="toolu_2"),
+                _make_text_response("Done."),
+            ]
+
+            run_agent(
+                system_prompt="test",
+                task="go",
+                tools_module=_make_tools_module(),
+                api_key="fake",
+                cache=True,
+            )
+
+        # Third API call: messages should have cache_control only on the LAST user msg
+        third_call = mock_client.messages.create.call_args_list[2].kwargs
+        messages = third_call["messages"]
+        user_msgs = [m for m in messages if m["role"] == "user"]
+        # All but the last user message should NOT have cache_control
+        for msg in user_msgs[:-1]:
+            if isinstance(msg["content"], list):
+                for item in msg["content"]:
+                    if isinstance(item, dict):
+                        assert "cache_control" not in item, (
+                            "Prior user messages should not have cache_control"
+                        )
+        # The last user message SHOULD have cache_control
+        last_user = user_msgs[-1]
+        last_content = last_user["content"][-1]
+        assert "cache_control" in last_content
+
     def test_cache_adds_cache_control_to_conversation_messages(self) -> None:
-        """When cache=True, assistant and tool_result messages get cache_control
-        on their last content block, so the growing conversation prefix is cached."""
+        """When cache=True, the latest tool_result gets cache_control."""
         from agent import run_agent
 
         with patch("agent.anthropic") as mock_sdk:
