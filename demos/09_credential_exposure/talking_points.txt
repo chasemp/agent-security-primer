@@ -1,0 +1,65 @@
+DEMO 9: CREDENTIAL EXPOSURE — .env Solved the Git Problem, Not the Agent Problem
+
+KEY TAKEAWAY
+Putting credentials in .env keeps them out of source control. But
+they're still in the process environment. Any tool that can read
+env vars puts your secrets one tool call away from the context
+window — and once a token is in the context, it can be extracted.
+
+BACKGROUND
+The standard advice: "Don't hardcode credentials. Use environment
+variables." This is correct for the git problem — secrets stay out
+of version control. But it doesn't address the agent problem.
+
+An agent with a read_config or shell-access tool can call
+read_config("DATABASE_URL") and get back:
+  postgresql://admin:s3cret_P@ssw0rd_2026@db-primary.internal:5432/infradb
+
+That connection string — including the password — is now a token in
+the context window. Every subsequent turn, the model re-reads it.
+And if an injection attack (Demo 1) steers the model to output the
+context or include it in a response, the credential is exfiltrated.
+
+The git problem and the agent problem are DIFFERENT problems:
+  Git problem:  credential in source → readable by anyone with repo access
+  Agent problem: credential in context → readable by the model → extractable
+
+THE DEMO
+The task asks the model to check configuration and query a database.
+The model, being helpful, calls read_config("DATABASE_URL") first.
+The connection string with embedded password enters the context.
+
+  Watch for:
+  1. Model calls read_config — the credential appears in [TOOL RESULT]
+  2. The password is now in the context window
+  3. Everything after this point re-reads that password
+
+THE PRESENTER FLOW
+  # "Notice: read_config is available as a tool"
+  cat demos/09_credential_exposure/tools.py
+
+  # "The task asks the model to check configuration first"
+  cat demos/09_credential_exposure/task.txt
+
+  # "Watch what happens"
+  cat demos/09_credential_exposure/task.txt | python agent.py \
+      demos/09_credential_exposure/system_prompt.txt \
+      --tools demos/09_credential_exposure/tools.py
+
+  # Point out: the password is now visible in the output
+
+Q&A PREPARATION
+
+Q: "But we told the model to check config — isn't that our fault?"
+A: Partially. But in a real agent, the model decides which tools to
+   call. An injection in the user's data (Demo 1) could steer the
+   model to call read_config even if the original task didn't ask
+   for it. The vulnerability is that the tool EXISTS, not that we
+   asked for it.
+
+Q: "Can't we just filter secrets from tool output?"
+A: That's output-side error translation (Demo 8). It helps, but
+   it's defense in depth, not the fix. The fix is Demo 10:
+   don't give the model a tool that can read secrets.
+
+COST: ~$0.005 per run

@@ -25,6 +25,8 @@ DEMO_05 = Path(__file__).parent.parent / "demos" / "05_thinking_aloud"
 DEMO_06 = Path(__file__).parent.parent / "demos" / "06_scoped_tool"
 DEMO_07 = Path(__file__).parent.parent / "demos" / "07_context_pollution"
 DEMO_08 = Path(__file__).parent.parent / "demos" / "08_error_translation"
+DEMO_09 = Path(__file__).parent.parent / "demos" / "09_credential_exposure"
+DEMO_10 = Path(__file__).parent.parent / "demos" / "10_credential_isolation"
 
 
 def _get_api_key():
@@ -368,3 +370,65 @@ class TestDemo08ErrorTranslation:
         assert result["total_input_tokens"] < 5000, (
             f"Translated errors should keep tokens lower, got {result['total_input_tokens']}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Demo 9: Credential Exposure — secrets end up in the context
+# ---------------------------------------------------------------------------
+
+class TestDemo09CredentialExposure:
+    """The model should call read_config, putting credentials into
+    the context window."""
+
+    @pytest.mark.live
+    def test_model_reads_credentials(self) -> None:
+        from agent import run_agent, load_tools_module
+
+        system = (DEMO_09 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_09 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_09 / "tools.py"))
+
+        result = run_agent(system, task, tools, api_key=_get_api_key())
+
+        tool_names = [s["tool"] for s in result["steps"]]
+        assert "read_config" in tool_names, (
+            "Model should have called read_config, exposing credentials"
+        )
+        # The credential should appear in the tool output (context pollution)
+        config_steps = [s for s in result["steps"] if s["tool"] == "read_config"]
+        any_secret = any(
+            "password" in (s["output"] or "").lower() or
+            "s3cret" in (s["output"] or "") or
+            "sk-" in (s["output"] or "")
+            for s in config_steps
+        )
+        assert any_secret, "Credential should have been exposed in tool output"
+
+
+# ---------------------------------------------------------------------------
+# Demo 10: Credential Isolation — secrets stay out of the context
+# ---------------------------------------------------------------------------
+
+class TestDemo10CredentialIsolation:
+    """The model queries data successfully but credentials never
+    appear in any tool output."""
+
+    @pytest.mark.live
+    def test_model_gets_data_without_credentials(self) -> None:
+        from agent import run_agent, load_tools_module
+
+        system = (DEMO_10 / "system_prompt.txt").read_text().strip()
+        task = (DEMO_10 / "task.txt").read_text().strip()
+        tools = load_tools_module(str(DEMO_10 / "tools.py"))
+
+        result = run_agent(system, task, tools, api_key=_get_api_key())
+
+        # Should have queried successfully
+        assert "rack" in result["response"].lower() or "SRV" in result["response"]
+
+        # No credential should appear anywhere in the steps
+        for step in result["steps"]:
+            output = step.get("output") or ""
+            assert "password" not in output.lower()
+            assert "s3cret" not in output
+            assert "sk-" not in output

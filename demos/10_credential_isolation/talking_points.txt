@@ -1,0 +1,80 @@
+DEMO 10: CREDENTIAL ISOLATION — Secrets Never Enter the Context
+
+KEY TAKEAWAY
+The credential lives in your code. It travels through your code.
+It never becomes a token in the model's context. The model gets
+the capability (query data) without the secret (connection string).
+
+THE FIX
+Compare Demo 9 and Demo 10:
+
+  Demo 9 (exposed):
+    Tools: read_config, query_database
+    Model calls read_config("DATABASE_URL")
+    → password enters the context window
+    → extractable via injection
+
+  Demo 10 (isolated):
+    Tools: query_database (only)
+    Tool uses credential internally
+    Model gets query results
+    → password never in the context
+    → nothing to extract
+
+The difference is ONE missing tool and ONE line of code:
+  _DATABASE_URL = os.environ["DATABASE_URL"]  # in tool scope, not model scope
+
+The tool reads the credential. The tool connects. The tool returns
+the query results. The model sees rows of data. At no point does the
+model see the connection string.
+
+THE DEMO FLOW
+  # "Same task, but look at the tools — no read_config"
+  cat demos/10_credential_isolation/tools.py
+
+  # "The model queries data just fine"
+  cat demos/10_credential_isolation/task.txt | python agent.py \
+      demos/10_credential_isolation/system_prompt.txt \
+      --tools demos/10_credential_isolation/tools.py
+
+  # Point out: the model got the same data as Demo 9
+  # but NO credential appeared anywhere in the output
+
+THE PRINCIPLE
+If the model doesn't need the secret, the model shouldn't have a
+way to get the secret. This is least privilege applied to the
+context window:
+  - Demo 6 showed least privilege for ACTIONS (scoped tools)
+  - Demo 10 shows least privilege for KNOWLEDGE (isolated secrets)
+
+BROADER PATTERNS
+This principle extends beyond env vars:
+  - API keys: tool uses the key, model sees the response
+  - OAuth tokens: tool handles auth, model sees the data
+  - Database passwords: tool connects, model sees query results
+  - Encryption keys: tool decrypts, model sees the plaintext data
+
+In every case: the tool is the boundary. The credential stays on
+the tool's side. The result crosses to the model's side.
+
+Q&A PREPARATION
+
+Q: "What about MCP servers? Aren't they the real solution?"
+A: MCP servers are the production-grade version of this pattern.
+   The server runs in its own process, holds its own credentials,
+   and exposes only the tool interface to the model. What we're
+   showing here is the same principle in its simplest form.
+
+Q: "What if the model asks for the credential directly?"
+A: There's no tool to give it. The model can ask "what's the
+   database password?" in its response text, but that's just text —
+   no tool executes. The credential is in a Python variable that
+   the model cannot access.
+
+Q: "Can the model infer the credential from the results?"
+A: Generally no — query results don't contain connection details.
+   But this is worth thinking about for tools that return metadata
+   (headers, connection info). Keep tool outputs clean — same
+   principle as error translation (Demo 8).
+
+COST: ~$0.003 per run

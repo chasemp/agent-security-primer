@@ -21,6 +21,8 @@ DEMO_DIRS = [
     "06_scoped_tool",
     "07_context_pollution",
     "08_error_translation",
+    "09_credential_exposure",
+    "10_credential_isolation",
 ]
 
 
