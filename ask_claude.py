@@ -24,11 +24,15 @@ PRICING = {
 
 
 def send_message(system_prompt, user_content, model="claude-haiku-4-5",
-                 api_key=None, schema=None, temperature=None, thinking=False):
+                 api_key=None, schema=None, temperature=None, thinking=False,
+                 effort=None):
     """Send a message to Claude and return the result.
 
     thinking: False to disable, True for default budget (5000),
-              or an int to set a specific budget_tokens value.
+              an int to set a specific budget_tokens value,
+              or "adaptive" for Claude to decide when/how much to think.
+    effort: None, or "low"/"medium"/"high"/"max" to control token spend.
+            Works with or without thinking. Controls ALL output tokens.
     """
     client = anthropic.Anthropic(api_key=api_key or os.environ["ANTHROPIC_API_KEY"])
 
@@ -42,10 +46,16 @@ def send_message(system_prompt, user_content, model="claude-haiku-4-5",
     if temperature is not None:
         kwargs["temperature"] = temperature
 
-    if thinking:
+    if thinking == "adaptive":
+        kwargs["thinking"] = {"type": "adaptive"}
+        kwargs["max_tokens"] = 16000
+    elif thinking:
         budget = thinking if isinstance(thinking, int) and thinking is not True else 5000
         kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
         kwargs["max_tokens"] = max(budget + 4096, 16000)
+
+    if effort:
+        kwargs["output_config"] = {"effort": effort}
 
     if schema:
         kwargs["tools"] = [{
@@ -116,7 +126,9 @@ if __name__ == "__main__":
         print("Usage: cat data.txt | python ask_claude.py system_prompt.txt [options]", file=sys.stderr)
         print("  --model MODEL        Model to use (default: claude-haiku-4-5)", file=sys.stderr)
         print("  --schema FILE        Force structured JSON output via tool_use", file=sys.stderr)
-        print("  --thinking           Enable extended thinking (shows reasoning)", file=sys.stderr)
+        print("  --thinking [N]       Enable extended thinking (budget_tokens, default 5000)", file=sys.stderr)
+        print("  --adaptive           Adaptive thinking (Claude decides when/how much)", file=sys.stderr)
+        print("  --effort LEVEL       Token spend control: low, medium, high, max", file=sys.stderr)
         print("  --temperature N      Sampling temperature (0=deterministic)", file=sys.stderr)
         sys.exit(1)
 
@@ -137,7 +149,10 @@ if __name__ == "__main__":
         del args[idx:idx + 2]
 
     enable_thinking = False
-    if "--thinking" in args:
+    if "--adaptive" in args:
+        args.remove("--adaptive")
+        enable_thinking = "adaptive"
+    elif "--thinking" in args:
         idx = args.index("--thinking")
         # Check if next arg is a number (budget), otherwise default
         if idx + 1 < len(args) and args[idx + 1].isdigit():
@@ -146,6 +161,12 @@ if __name__ == "__main__":
         else:
             enable_thinking = True
             del args[idx]
+
+    effort = None
+    if "--effort" in args:
+        idx = args.index("--effort")
+        effort = args[idx + 1]
+        del args[idx:idx + 2]
 
     model = "claude-haiku-4-5"
     if "--model" in args:
@@ -157,7 +178,7 @@ if __name__ == "__main__":
 
     result = send_message(system_prompt, user_content, model,
                           schema=schema, temperature=temperature,
-                          thinking=enable_thinking)
+                          thinking=enable_thinking, effort=effort)
 
     if schema:
         print(result["text"])

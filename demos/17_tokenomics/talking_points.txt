@@ -51,9 +51,9 @@ varies by model tier, and this is worth understanding:
   ┌────────────────┬───────────┬──────────┬──────────────────┐
   │ Model          │ Min Tokens│ Input $/M│ Cache ROI        │
   ├────────────────┼───────────┼──────────┼──────────────────┤
-  │ Sonnet 4.6     │ ~1,024    │ $3.00    │ Moderate         │
-  │ Haiku 4.5      │ ~4,096    │ $1.00    │ Low (cheap model)│
-  │ Opus 4.6       │ ~4,096    │ $15.00   │ Massive          │
+  │ Sonnet 4.6     │ 2,048     │ $3.00    │ Moderate         │
+  │ Haiku 4.5      │ 4,096     │ $1.00    │ Low (cheap model)│
+  │ Opus 4.6       │ 4,096     │ $15.00   │ Massive          │
   └────────────────┴───────────┴──────────┴──────────────────┘
 
 The insight: Haiku is so fast and cheap that the overhead of
@@ -300,10 +300,110 @@ all prior messages.
 This is a real constraint you'll hit in production. Document it,
 test for it, and manage the breakpoints intentionally.
 
-THE CACHE TTL
-Cache entries last 5 minutes, extended on each hit. An active agent
-loop that makes calls every few seconds stays cached indefinitely.
-A batch job that runs hourly pays the cache write cost each run.
+THE CACHE TTL — TWO OPTIONS
+
+  ┌──────────┬──────────────┬───────────────────────────────────┐
+  │ TTL      │ Write Cost   │ Best For                          │
+  ├──────────┼──────────────┼───────────────────────────────────┤
+  │ 5 min    │ 1.25x input  │ Active agent loops, rapid-fire    │
+  │ (default)│              │ API calls. Cache refreshes free    │
+  │          │              │ on each hit within the window.     │
+  ├──────────┼──────────────┼───────────────────────────────────┤
+  │ 1 hour   │ 2.00x input  │ Slower interactions: chat where   │
+  │          │              │ users take >5 min to respond,      │
+  │          │              │ agentic sub-tasks that run long,   │
+  │          │              │ batch jobs that run more often     │
+  │          │              │ than hourly.                       │
+  └──────────┴──────────────┴───────────────────────────────────┘
+
+The 5-minute default means: an active agent loop that calls the
+API every few seconds stays cached indefinitely — each call
+refreshes the TTL for free. A batch job that runs every 10
+minutes loses the cache between runs and pays the write cost
+each time. For that pattern, the 1-hour TTL at 2x write cost
+saves money over repeated 5-minute cache misses.
+
+To use 1-hour TTL:
+  {"cache_control": {"type": "ephemeral", "ttl": "1h"}}
+
+One more effect: cache hits are NOT deducted from your API rate
+limits. Heavy caching can effectively increase your throughput
+ceiling.
+
+
+AUTOMATIC CACHING — THE PRACTICAL VERSION
+
+Everything above shows EXPLICIT caching — you place cache_control
+markers on individual content blocks, manage the 4-block limit,
+strip markers from old messages. That's the transparent version:
+you see exactly what gets cached and why.
+
+The API also supports AUTOMATIC caching. One top-level field on
+the request body and the system handles everything:
+
+  {
+    "model": "claude-haiku-4-5",
+    "max_tokens": 4096,
+    "cache_control": {"type": "ephemeral"},   ← this is it
+    "system": system_prompt,
+    "tools": tool_defs,
+    "messages": messages,
+  }
+
+The system automatically places the cache breakpoint on the last
+cacheable block and moves it forward as the conversation grows.
+No manual marker management. No stripping old messages.
+
+  Request 1: [system + user_1] ◀ auto cache point
+             Everything written to cache.
+
+  Request 2: [system + user_1 + asst_1 + user_2] ◀ auto cache point
+             system+user_1 read from cache.
+             asst_1+user_2 written to cache.
+
+  Request 3: [system + ... + user_3] ◀ auto cache point
+             Everything through user_2 read from cache.
+             Only the newest exchange written.
+
+COMBINING EXPLICIT AND AUTOMATIC
+
+They work together. The strategy:
+  - Explicit breakpoints for STABLE content (system prompt, tools)
+  - Automatic caching for GROWING content (conversation history)
+
+  {
+    "cache_control": {"type": "ephemeral"},          ← auto for conversation
+    "system": [{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": {"type": "ephemeral"}       ← explicit for system
+    }],
+    "tools": tool_defs_with_cache_on_last,           ← explicit for tools
+    "messages": messages,                             ← auto handles these
+  }
+
+Both share the 4-breakpoint limit. Explicit markers use slots
+first; automatic uses whatever's left.
+
+Edge cases:
+  - If the auto target already has an explicit breakpoint with the
+    same TTL, automatic is a no-op (harmless).
+  - If TTLs conflict (explicit 1h, auto 5m on same block), you get
+    a 400 error.
+  - If all 4 slots are used by explicit markers, no room for
+    automatic — you get a 400 error.
+
+WHY SHOW BOTH IN THE DEMO
+We show explicit caching first because it teaches the MECHANISM.
+You see where the breakpoints go, why prefix matching works, and
+what the 4-block limit means. Then we show automatic caching as
+the practical follow-up: "now that you understand it, here's the
+one-liner that handles it for you."
+
+Automatic caching is simpler. But if it breaks — cache misses,
+unexpected costs — you need to understand the explicit mechanics
+to debug it. The transparent version isn't overhead; it's the
+knowledge that makes the automatic version trustworthy.
 
 THE DEMO FLOW
   # "First, without caching — watch the cost"
@@ -544,13 +644,116 @@ SUBSEQUENT TURN, not just once.
 Combined with conversation caching (Part 1), minimized results
 mean a smaller prefix to cache and read. The savings compound.
 
+PART 5: count_tokens — Know Before You Spend
+
+BACKGROUND
+The API has a count_tokens endpoint (/v1/messages/count_tokens)
+that counts tokens for a message WITHOUT generating a response.
+Same parameters as messages.create — model, messages, system,
+tools — but returns only {input_tokens: N}. No generation. No
+output cost. Just the count.
+
+The SDK exposes it as client.messages.count_tokens().
+
+This is a free pre-flight check. The count itself costs nothing.
+
+INPUT vs. OUTPUT — THE TWO SIDES OF THE BILL
+
+When you call messages.create, you pay for two things:
+
+  ┌────────────────────────────────────────────────────────────┐
+  │ INPUT tokens (you pay to SEND)                            │
+  │   system prompt + tool definitions + all messages          │
+  │   → this is what count_tokens reports                      │
+  │   → you know this BEFORE you call                          │
+  │   → grows every turn (all prior messages re-sent)          │
+  ├────────────────────────────────────────────────────────────┤
+  │ OUTPUT tokens (you pay to RECEIVE)                         │
+  │   the model's response text + thinking tokens              │
+  │   → you CANNOT know this in advance                        │
+  │   → depends on what the model decides to say               │
+  │   → output pricing is 5x input across all models           │
+  └────────────────────────────────────────────────────────────┘
+
+The pricing per million tokens:
+
+  ┌────────────────┬───────────┬────────────┐
+  │ Model          │ Input $/M │ Output $/M │
+  ├────────────────┼───────────┼────────────┤
+  │ Haiku 4.5      │ $1.00     │ $5.00      │
+  │ Sonnet 4.6     │ $3.00     │ $15.00     │
+  │ Opus 4.6       │ $15.00    │ $75.00     │
+  └────────────────┴───────────┴────────────┘
+
+So count_tokens gives you the FLOOR — the minimum you will pay
+for a call. The actual cost is that plus whatever the model
+generates. Output is unpredictable and 5x more expensive per
+token.
+
+For agent loops, input is often the dominant cost anyway. The
+context grows every turn (all prior messages re-sent as input),
+while output per turn stays roughly constant. A 30-turn agent
+loop re-sends 29 turns of history as input on the final turn.
+The output is just the latest response.
+
+WHY THIS MATTERS
+  - Know the input cost floor BEFORE you send
+  - See how the same text costs differently across models
+  - Understand where the tokens actually go (system prompt vs.
+    tools vs. user message)
+  - Budget planning: input is predictable, output is not — plan
+    for the part you can measure
+
+THE DEMO FLOW
+
+  # "How much does a sentence cost across all three models?"
+  echo "What servers are degraded in rack 7?" | python count_tokens.py
+
+  # Token count is the same across models, but cost differs
+  # because pricing is per-model: Haiku $1, Sonnet $3, Opus $15
+  # "This is just the input side — the floor."
+
+  # "Now let's see a bigger piece of text — Walden by Thoreau"
+  cat demos/17_tokenomics/walden.txt | python count_tokens.py
+
+  # Thousands of tokens. The cost difference between models
+  # becomes dramatic at this scale.
+  # "And this is JUST input. Output would add 5x per token on top."
+
+  # "Now add the system prompt and tools from this demo"
+  cat demos/17_tokenomics/walden.txt | python count_tokens.py \
+      --system demos/17_tokenomics/system_prompt.txt \
+      --tools demos/17_tokenomics/tools.py
+
+  # The system prompt and tools add significant overhead.
+  # This is what your agent pays EVERY TURN — and why
+  # caching matters.
+
+THE INSIGHT
+Token counts may vary slightly across models (different
+tokenizers), but the real story is the price multiplier.
+Opus is 15x Haiku per input token and 15x per output token.
+Model choice is a financial decision, not just a capability one.
+
+  ┌────────────────┬───────────┬────────────┬─────────────────────┐
+  │ Model          │ Input $/M │ Output $/M │ 10K in + 1K out     │
+  ├────────────────┼───────────┼────────────┼─────────────────────┤
+  │ Haiku 4.5      │ $1.00     │ $5.00      │ $0.01 + $0.005      │
+  │ Sonnet 4.6     │ $3.00     │ $15.00     │ $0.03 + $0.015      │
+  │ Opus 4.6       │ $15.00    │ $75.00     │ $0.15 + $0.075      │
+  └────────────────┴───────────┴────────────┴─────────────────────┘
+
+  At 10K input + 1K output, Opus costs $0.225 vs Haiku's $0.015.
+  Same request. 15x the price.
+
 THE FULL TOKENOMICS STACK
   1. Understand the costs (thinking accumulation, uncached prompts)
   2. Reduce costs (prompt caching, tool caching, conversation caching)
   3. Cap costs (token budget circuit breaker)
   4. Minimize input (compress text before it becomes tokens)
+  5. Measure first (count_tokens before you send)
 
-  These four layers turn "a credit card attached to a while loop"
+  These five layers turn "a credit card attached to a while loop"
   into a predictable, bounded, efficient line item.
 
 

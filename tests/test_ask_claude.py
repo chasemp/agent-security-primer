@@ -468,6 +468,136 @@ class TestFormatResultWithThinking:
 
 
 # ---------------------------------------------------------------------------
+# send_message with adaptive thinking and effort
+# ---------------------------------------------------------------------------
+
+class TestSendMessageWithAdaptiveThinking:
+    """Adaptive thinking lets Claude decide when and how much to think.
+    Replaces budget_tokens as the recommended approach for Opus 4.6
+    and Sonnet 4.6."""
+
+    def _make_thinking_response(self, **overrides):
+        resp = MagicMock()
+        thinking_block = MagicMock()
+        thinking_block.type = "thinking"
+        thinking_block.thinking = overrides.get("thinking_text", "Reasoning...")
+        text_block = MagicMock()
+        text_block.type = "text"
+        text_block.text = overrides.get("response_text", "The answer.")
+        resp.content = [thinking_block, text_block]
+        resp.usage.input_tokens = overrides.get("input_tokens", 200)
+        resp.usage.output_tokens = overrides.get("output_tokens", 100)
+        return resp
+
+    def test_adaptive_passes_adaptive_type(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking="adaptive",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["thinking"]["type"] == "adaptive"
+        assert "budget_tokens" not in call_args["thinking"]
+
+    def test_effort_passes_output_config(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking="adaptive", effort="medium",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["output_config"]["effort"] == "medium"
+
+    def test_effort_low(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking="adaptive", effort="low",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["output_config"]["effort"] == "low"
+
+    def test_effort_max(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response()
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking="adaptive", effort="max",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["output_config"]["effort"] == "max"
+
+    def test_effort_without_adaptive_still_works(self) -> None:
+        """Effort controls all token spend, not just thinking."""
+        from ask_claude import send_message
+
+        resp = MagicMock()
+        resp.content = [MagicMock(type="text", text="quick answer")]
+        resp.usage.input_tokens = 100
+        resp.usage.output_tokens = 10
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = resp
+
+            send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", effort="low",
+            )
+
+        call_args = mock_client.messages.create.call_args.kwargs
+        assert call_args["output_config"]["effort"] == "low"
+        assert "thinking" not in call_args
+
+    def test_adaptive_returns_thinking_text(self) -> None:
+        from ask_claude import send_message
+
+        with patch("ask_claude.anthropic") as mock_sdk:
+            mock_client = MagicMock()
+            mock_sdk.Anthropic.return_value = mock_client
+            mock_client.messages.create.return_value = self._make_thinking_response(
+                thinking_text="Deep analysis here.",
+                response_text="Final answer.",
+            )
+
+            result = send_message(
+                system_prompt="x", user_content="y",
+                api_key="fake", thinking="adaptive",
+            )
+
+        assert result["thinking"] == "Deep analysis here."
+        assert result["text"] == "Final answer."
+
+
+# ---------------------------------------------------------------------------
 # send_message with temperature
 # ---------------------------------------------------------------------------
 

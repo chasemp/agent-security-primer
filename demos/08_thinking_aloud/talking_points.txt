@@ -152,4 +152,135 @@ A: Yes. When an agent has tools available, the thinking block often
    model to skip planning and jump straight to action — which is
    exactly the kind of behavior that leads to fabrication (Demo 2).
 
-COST: ~$0.01-0.05 per run depending on model and budget
+
+PART 2: ADAPTIVE THINKING AND EFFORT — The Production Controls
+
+Everything above uses budget_tokens — you pick a number, the model
+gets that many tokens to think. This is the explicit version. It
+teaches the mechanism and gives you a precise dial.
+
+On Opus 4.6 and Sonnet 4.6, budget_tokens is DEPRECATED. It still
+works today but will be removed. The recommended replacements:
+
+  ADAPTIVE THINKING: Claude decides when and how much to think
+    thinking: {"type": "adaptive"}
+
+  EFFORT: Controls ALL token spend — thinking, text, tool calls
+    output_config: {"effort": "low|medium|high|max"}
+
+These are complementary. Adaptive thinking handles the "should I
+think?" decision. Effort handles the "how hard?" decision.
+
+HOW ADAPTIVE THINKING WORKS
+With budget_tokens, thinking is always on — the model always uses
+its budget, even for "what's 2+2". With adaptive thinking, the
+model evaluates the question first: is this complex enough to
+warrant internal reasoning? If yes, it thinks. If not, it skips
+thinking and answers directly. Less waste.
+
+  budget_tokens (old):   model ALWAYS thinks, up to N tokens
+  adaptive (new):        model DECIDES whether to think
+
+At high/max effort, Claude almost always thinks. At low effort,
+it skips thinking for simple questions. This is the right default
+for production agents where most turns are simple tool calls
+with occasional complex reasoning.
+
+THE EFFORT LEVELS
+
+  ┌─────────┬────────────────────────────────────────────────┐
+  │ Level   │ Behavior                                       │
+  ├─────────┼────────────────────────────────────────────────┤
+  │ max     │ No constraints. Deepest possible reasoning.    │
+  │         │ More tool calls, more explanation, more tokens.│
+  ├─────────┼────────────────────────────────────────────────┤
+  │ high    │ Default. Same as not setting effort at all.    │
+  │ (default│ Claude always thinks deeply.                   │
+  ├─────────┼────────────────────────────────────────────────┤
+  │ medium  │ Balanced. Moderate thinking, fewer tokens.     │
+  │         │ Good default for agentic workflows.            │
+  ├─────────┼────────────────────────────────────────────────┤
+  │ low     │ Most efficient. Skips thinking for simple      │
+  │         │ tasks. Fewer tool calls, terse responses.      │
+  │         │ Best for sub-agents and high-volume work.      │
+  └─────────┴────────────────────────────────────────────────┘
+
+Effort is a behavioral signal, not a strict budget. At low effort,
+Claude will still think on genuinely hard problems — just less
+than it would at high effort for the same problem.
+
+THE DEMO — LOW vs MAX ON THE SAME QUESTION
+
+  # "Adaptive with low effort — quick, may skip thinking"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt \
+      --adaptive --effort low --model claude-sonnet-4-6
+
+  # "Adaptive with max effort — deep reasoning, no constraints"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt \
+      --adaptive --effort max --model claude-sonnet-4-6
+
+  # Compare:
+  #   low:  Short or no thinking block, quick answer, fewer tokens
+  #   max:  Long thinking block, thorough analysis, more tokens
+  #   Same question. Same model. Different effort. Visible difference.
+
+  # "Effort without thinking — controls text and tool calls too"
+  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt \
+      --effort low --model claude-sonnet-4-6
+
+  # No thinking at all. Just a terse response. Effort controls
+  # ALL output, not just the thinking block.
+
+WHY SHOW BOTH APPROACHES
+We show budget_tokens first because it teaches the MECHANISM:
+  - Thinking has a token cost
+  - More thinking = more thorough = more expensive
+  - The budget is a dial you control
+
+Then we show adaptive + effort as the PRODUCTION approach:
+  - Claude decides when to think (adaptive)
+  - You set the intensity dial (effort)
+  - Less manual tuning, better defaults
+
+budget_tokens is still useful for:
+  - Haiku 4.5 and older models (no adaptive support)
+  - Precise cost control (exact token limit)
+  - Demos like this one (teaching the mechanism)
+
+adaptive + effort is better for:
+  - Production agents on Opus 4.6 / Sonnet 4.6
+  - Bimodal workloads (simple turns + complex turns)
+  - Agentic loops where thinking depth should vary per turn
+
+CONNECTION TO DEMO 17 (TOKENOMICS)
+Effort is a cost control lever. With budget_tokens, thinking
+tokens accumulate every turn because the model always thinks.
+With adaptive + low effort, the model skips thinking on simple
+turns — no thinking tokens to accumulate. This directly reduces
+the quadratic cost growth described in Demo 17.
+
+  budget_tokens + 30 turns = 30 × N thinking tokens accumulated
+  adaptive low + 30 turns  = thinking only on complex turns
+                             simple turns add 0 thinking tokens
+
+Q&A PREPARATION (ADDITIONAL)
+
+Q: "Is budget_tokens going away?"
+A: It's deprecated on Opus 4.6 and Sonnet 4.6 — still works
+   today, will be removed in a future model release. Haiku 4.5
+   and older models still require it. Plan to migrate production
+   code to adaptive + effort for the 4.6 models.
+
+Q: "What's the difference between effort and budget_tokens?"
+A: budget_tokens caps THINKING tokens only. effort controls ALL
+   output — thinking, text responses, and tool calls. Low effort
+   means fewer tool calls, terser responses, and less thinking.
+   It's a broader control.
+
+Q: "Should I always use adaptive?"
+A: For Opus 4.6 and Sonnet 4.6, yes. It's strictly better for
+   most workloads — Claude thinks when it needs to and skips when
+   it doesn't. For Haiku 4.5 and older models, you still need
+   budget_tokens.
+
+COST: ~$0.01-0.05 per run depending on model and effort level

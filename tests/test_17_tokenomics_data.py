@@ -148,3 +148,66 @@ class TestTalkingPoints:
     def test_mentions_cost(self) -> None:
         content = (DEMO_DIR / "talking_points.txt").read_text().lower()
         assert "cost" in content or "price" in content or "$" in content
+
+    def test_mentions_count_tokens(self) -> None:
+        content = (DEMO_DIR / "talking_points.txt").read_text().lower()
+        assert "count_tokens" in content or "count tokens" in content
+
+
+# ---------------------------------------------------------------------------
+# Count tokens script
+# ---------------------------------------------------------------------------
+
+class TestCountTokensScript:
+    """count_tokens.py shows token costs across models without calling the API."""
+
+    def test_script_exists(self) -> None:
+        script = Path(__file__).parent.parent / "count_tokens.py"
+        assert script.exists()
+
+    def test_walden_excerpt_exists(self) -> None:
+        assert (DEMO_DIR / "walden.txt").exists()
+
+    def test_walden_excerpt_has_substance(self) -> None:
+        content = (DEMO_DIR / "walden.txt").read_text()
+        assert len(content) > 2000, "Walden excerpt needs enough text for a meaningful cost demo"
+
+
+class TestCountTokensModule:
+    """Tests for count_tokens.py formatting and cost logic."""
+
+    @pytest.fixture
+    def ct_module(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "count_tokens", Path(__file__).parent.parent / "count_tokens.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_format_cost_table_includes_all_models(self, ct_module) -> None:
+        rows = [
+            {"model": "claude-haiku-4-5", "input_tokens": 100},
+            {"model": "claude-sonnet-4-6", "input_tokens": 100},
+            {"model": "claude-opus-4-6", "input_tokens": 100},
+        ]
+        output = ct_module.format_cost_table(rows)
+        assert "haiku" in output.lower()
+        assert "sonnet" in output.lower()
+        assert "opus" in output.lower()
+
+    def test_format_cost_table_shows_token_counts(self, ct_module) -> None:
+        rows = [
+            {"model": "claude-haiku-4-5", "input_tokens": 42},
+        ]
+        output = ct_module.format_cost_table(rows)
+        assert "42" in output
+
+    def test_calculate_cost_uses_correct_pricing(self, ct_module) -> None:
+        # Haiku: $1/MTok input
+        cost = ct_module.calculate_input_cost("claude-haiku-4-5", 1_000_000)
+        assert cost == pytest.approx(1.00)
+        # Opus: $15/MTok input
+        cost = ct_module.calculate_input_cost("claude-opus-4-6", 1_000_000)
+        assert cost == pytest.approx(15.00)
