@@ -45,12 +45,12 @@ and makes a clean decision in one turn.
 THE DEMO FLOW — SIDE BY SIDE
 
   # "First, Demo 7 — raw errors (the audience already saw this)"
-  cat demos/07_context_pollution/task.txt | python agent.py \
+  cat demos/07_context_pollution/task.txt | python scripts/agent.py \
       demos/07_context_pollution/system_prompt.txt \
       --tools demos/07_context_pollution/tools.py
 
   # "Now the same task with translated errors"
-  cat demos/08_error_translation/task.txt | python agent.py \
+  cat demos/08_error_translation/task.txt | python scripts/agent.py \
       demos/08_error_translation/system_prompt.txt \
       --tools demos/08_error_translation/tools.py
 

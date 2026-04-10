@@ -24,9 +24,9 @@ THE PRESENTER FLOW
   V=demos/05_sensitivity  # or wherever it ends up
 
   # "Same question, three ways — all at temperature 0"
-  cat $V/phrasing_a.txt | python ask_claude.py $V/system_prompt.txt --temperature 0
-  cat $V/phrasing_b.txt | python ask_claude.py $V/system_prompt.txt --temperature 0
-  cat $V/phrasing_c.txt | python ask_claude.py $V/system_prompt.txt --temperature 0
+  cat $V/phrasing_a.txt | python scripts/ask_claude.py $V/system_prompt.txt --temperature 0
+  cat $V/phrasing_b.txt | python scripts/ask_claude.py $V/system_prompt.txt --temperature 0
+  cat $V/phrasing_c.txt | python scripts/ask_claude.py $V/system_prompt.txt --temperature 0
 
   # Three different answers. No randomness. Just different input tokens.
 

@@ -41,15 +41,15 @@ world actions, temperature=0 is almost always the right choice.
 
 THE PRESENTER FLOW
   # "Same question, temperature 0 — three times"
-  cat question.txt | python ask_claude.py system_prompt.txt --temperature 0
-  cat question.txt | python ask_claude.py system_prompt.txt --temperature 0
-  cat question.txt | python ask_claude.py system_prompt.txt --temperature 0
+  cat question.txt | python scripts/ask_claude.py system_prompt.txt --temperature 0
+  cat question.txt | python scripts/ask_claude.py system_prompt.txt --temperature 0
+  cat question.txt | python scripts/ask_claude.py system_prompt.txt --temperature 0
   # → identical output each time
 
   # "Same question, temperature 1 — three times"
-  cat question.txt | python ask_claude.py system_prompt.txt --temperature 1
-  cat question.txt | python ask_claude.py system_prompt.txt --temperature 1
-  cat question.txt | python ask_claude.py system_prompt.txt --temperature 1
+  cat question.txt | python scripts/ask_claude.py system_prompt.txt --temperature 1
+  cat question.txt | python scripts/ask_claude.py system_prompt.txt --temperature 1
+  cat question.txt | python scripts/ask_claude.py system_prompt.txt --temperature 1
   # → different output each time
 
 Q&A PREPARATION

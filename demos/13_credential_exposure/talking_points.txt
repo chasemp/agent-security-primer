@@ -42,7 +42,7 @@ THE PRESENTER FLOW
   cat demos/09_credential_exposure/task.txt
 
   # "Watch what happens"
-  cat demos/09_credential_exposure/task.txt | python agent.py \
+  cat demos/09_credential_exposure/task.txt | python scripts/agent.py \
       demos/09_credential_exposure/system_prompt.txt \
       --tools demos/09_credential_exposure/tools.py
 

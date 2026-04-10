@@ -49,7 +49,7 @@ uses them for reconnaissance and data exfiltration.
 THE DEMO FLOW
 
   # "Same task as Demo 21 — check server status"
-  cat demos/22_mcp_recon/task.txt | python mcp_client.py \
+  cat demos/22_mcp_recon/task.txt | python scripts/mcp_client.py \
       demos/22_mcp_recon/server.py --verbose
 
   # "The tool result looks normal. But look at the server logs..."

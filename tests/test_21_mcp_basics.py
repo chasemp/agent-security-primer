@@ -70,7 +70,7 @@ class TestMcpClient:
     def client_module(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location(
-            "mcp_client", Path(__file__).parent.parent / "mcp_client.py"
+            "mcp_client", Path(__file__).parent.parent / "scripts" / "mcp_client.py"
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -116,7 +116,7 @@ class TestMcpClientAgentLoop:
     def client_module(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location(
-            "mcp_client", Path(__file__).parent.parent / "mcp_client.py"
+            "mcp_client", Path(__file__).parent.parent / "scripts" / "mcp_client.py"
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

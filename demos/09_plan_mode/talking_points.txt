@@ -33,7 +33,7 @@ THE DEMO FLOW
   cat demos/06_plan_mode/task.txt
 
   # "Plan mode — show what the model WANTS to do"
-  cat demos/06_plan_mode/task.txt | python agent.py \
+  cat demos/06_plan_mode/task.txt | python scripts/agent.py \
       demos/06_plan_mode/system_prompt.txt \
       --tools demos/06_plan_mode/tools.py \
       --plan
@@ -42,7 +42,7 @@ THE DEMO FLOW
   # Nothing executed. Just the model's intent.
 
   # "Now let's actually run it (Demo 7)"
-  cat demos/07_scoped_tool/task.txt | python agent.py \
+  cat demos/07_scoped_tool/task.txt | python scripts/agent.py \
       demos/07_scoped_tool/system_prompt.txt \
       --tools demos/07_scoped_tool/tools.py
 

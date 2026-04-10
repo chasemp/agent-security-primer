@@ -34,17 +34,17 @@ THE DEMO FLOW
   cat demos/16_conditional_auth/tools.py
 
   # "Show Pydantic catching an unauthorized delete"
-  python run_tool.py demos/16_conditional_auth/tools.py server_action \
+  python scripts/run_tool.py demos/16_conditional_auth/tools.py server_action \
     '{"server_id": "SRV-1002", "action": "delete", "reason": "decommission", "supervisor_approved": false}'
   # → VALIDATION ERROR: Delete requires supervisor_approved=True
 
   # "Now with approval"
-  python run_tool.py demos/16_conditional_auth/tools.py server_action \
+  python scripts/run_tool.py demos/16_conditional_auth/tools.py server_action \
     '{"server_id": "SRV-1002", "action": "delete", "reason": "decommission", "supervisor_approved": true}'
   # → Success
 
   # "Watch the agent try"
-  cat demos/16_conditional_auth/task.txt | python agent.py \
+  cat demos/16_conditional_auth/task.txt | python scripts/agent.py \
       demos/16_conditional_auth/system_prompt.txt \
       --tools demos/16_conditional_auth/tools.py
 

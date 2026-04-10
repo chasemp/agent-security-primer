@@ -31,7 +31,7 @@ THE DEMO
 THE PRESENTER FLOW
 
   # "Easy ticket first. Keywords and meaning align."
-  cat demos/20_classification/ticket_easy.txt | python ask_claude.py \
+  cat demos/20_classification/ticket_easy.txt | python scripts/ask_claude.py \
       demos/20_classification/system_prompt_basic.txt --temperature 0
 
   # → "Performance" — correct. The keywords (response times,
@@ -46,7 +46,7 @@ THE PRESENTER FLOW
   # cause: the authentication update broke the billing page.
 
   # "Let's see what the model says — basic prompt, no examples."
-  cat demos/20_classification/ticket_tricky.txt | python ask_claude.py \
+  cat demos/20_classification/ticket_tricky.txt | python scripts/ask_claude.py \
       demos/20_classification/system_prompt_basic.txt --temperature 0
 
   # → Could go either way. The model might say "Billing" or
@@ -54,7 +54,7 @@ THE PRESENTER FLOW
   #   This is the ambiguous case.
 
   # "Now with labeled examples in the prompt."
-  cat demos/20_classification/ticket_tricky.txt | python ask_claude.py \
+  cat demos/20_classification/ticket_tricky.txt | python scripts/ask_claude.py \
       demos/20_classification/system_prompt_examples.txt --temperature 0
 
   # → "Authentication" — the examples taught the model what

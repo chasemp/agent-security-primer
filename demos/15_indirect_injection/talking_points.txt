@@ -40,7 +40,7 @@ THE DEMO FLOW
   cat demos/15_indirect_injection/tools.py
 
   # "Fetch the project wiki page"
-  cat demos/15_indirect_injection/task.txt | python agent.py \
+  cat demos/15_indirect_injection/task.txt | python scripts/agent.py \
       demos/15_indirect_injection/system_prompt.txt \
       --tools demos/15_indirect_injection/tools.py
 

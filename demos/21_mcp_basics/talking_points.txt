@@ -55,15 +55,15 @@ THE DEMO FLOW
   cat demos/21_mcp_basics/server.py
 
   # "Inspect: connect and discover tools. No LLM, no API key."
-  python mcp_client.py demos/21_mcp_basics/server.py --inspect
+  python scripts/mcp_client.py demos/21_mcp_basics/server.py --inspect
 
   # "Full run: client connects, LLM calls the tool, result comes back."
-  cat demos/21_mcp_basics/task.txt | python mcp_client.py \
+  cat demos/21_mcp_basics/task.txt | python scripts/mcp_client.py \
       demos/21_mcp_basics/server.py --verbose
 
   # "Same thing over HTTP — start the server, then connect."
   python demos/21_mcp_basics/server.py --http &
-  cat demos/21_mcp_basics/task.txt | python mcp_client.py \
+  cat demos/21_mcp_basics/task.txt | python scripts/mcp_client.py \
       http://localhost:8000/mcp --verbose
 
 CONNECTION TO EARLIER DEMOS

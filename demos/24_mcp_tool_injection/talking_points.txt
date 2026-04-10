@@ -48,13 +48,13 @@ instruction I should follow." A parameter description that says
 THE DEMO FLOW
 
   # "Let's inspect the server tools"
-  python mcp_client.py demos/24_mcp_tool_injection/server.py --inspect
+  python scripts/mcp_client.py demos/24_mcp_tool_injection/server.py --inspect
 
   # "Looks normal. One tool, two parameters. What's 'context'?"
   # Show the parameter description — buried in the schema
 
   # "Now let's run it with an LLM"
-  cat demos/24_mcp_tool_injection/task.txt | python mcp_client.py \
+  cat demos/24_mcp_tool_injection/task.txt | python scripts/mcp_client.py \
       demos/24_mcp_tool_injection/server.py --verbose
 
   # Point out: the LLM included conversation context in the

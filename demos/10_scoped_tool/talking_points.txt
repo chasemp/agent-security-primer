@@ -86,17 +86,17 @@ THE DEMO FLOW — THREE PARTS
 Part 1: Show Pydantic validation in isolation (no API, no model)
 
   # "Let's see what Pydantic does. Valid ID:"
-  python run_tool.py demos/06_scoped_tool/tools.py restart_server \
+  python scripts/run_tool.py demos/06_scoped_tool/tools.py restart_server \
     '{"server_id": "SRV-1002", "reason": "test"}'
   # → success
 
   # "Fabricated ID:"
-  python run_tool.py demos/06_scoped_tool/tools.py restart_server \
+  python scripts/run_tool.py demos/06_scoped_tool/tools.py restart_server \
     '{"server_id": "SRV-9999", "reason": "test"}'
   # → VALIDATION ERROR: not found in inventory
 
   # "Wrong format entirely:"
-  python run_tool.py demos/06_scoped_tool/tools.py restart_server \
+  python scripts/run_tool.py demos/06_scoped_tool/tools.py restart_server \
     '{"server_id": "just-a-guess", "reason": "test"}'
   # → VALIDATION ERROR: does not match SRV-#### format
 
@@ -104,7 +104,7 @@ Part 1: Show Pydantic validation in isolation (no API, no model)
 
 Part 2: The happy path — agent uses tools correctly
 
-  cat demos/06_scoped_tool/task.txt | python agent.py \
+  cat demos/06_scoped_tool/task.txt | python scripts/agent.py \
       demos/06_scoped_tool/system_prompt.txt \
       --tools demos/06_scoped_tool/tools.py
 
@@ -115,7 +115,7 @@ Part 2: The happy path — agent uses tools correctly
 
 Part 3: The catch — model tries a fabricated ID, Pydantic stops it
 
-  cat demos/06_scoped_tool/task_fabricated.txt | python agent.py \
+  cat demos/06_scoped_tool/task_fabricated.txt | python scripts/agent.py \
       demos/06_scoped_tool/system_prompt.txt \
       --tools demos/06_scoped_tool/tools.py
 

@@ -5,10 +5,11 @@
 24 demos built (20 original + 4 MCP), 528 mocked tests + 27 live pre-flight.
 Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0.08).
 
-### Scripts
-- `ask_claude.py` — single-turn shim with `--schema`, `--thinking`, `--temperature`, `--model`
+### Scripts (in `scripts/`)
+- `ask_claude.py` — single-turn shim with `--schema`, `--thinking`, `--adaptive`, `--effort`, `--temperature`, `--model`
 - `agent.py` — multi-turn agentic loop with `--tools`, `--plan`, `--model`
 - `mcp_client.py` — MCP client with `--inspect`, `--verbose`, stdio/HTTP transport
+- `count_tokens.py` — pre-flight token count across all 3 models
 - `validate.py` — check a JSON field against known-good values
 - `run_tool.py` — call tool functions directly (no API, no model)
 

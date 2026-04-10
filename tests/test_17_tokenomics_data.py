@@ -162,7 +162,7 @@ class TestCountTokensScript:
     """count_tokens.py shows token costs across models without calling the API."""
 
     def test_script_exists(self) -> None:
-        script = Path(__file__).parent.parent / "count_tokens.py"
+        script = Path(__file__).parent.parent / "scripts" / "count_tokens.py"
         assert script.exists()
 
     def test_walden_excerpt_exists(self) -> None:
@@ -180,7 +180,7 @@ class TestCountTokensModule:
     def ct_module(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location(
-            "count_tokens", Path(__file__).parent.parent / "count_tokens.py"
+            "count_tokens", Path(__file__).parent.parent / "scripts" / "count_tokens.py"
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

@@ -44,7 +44,7 @@ THE PRESENTER FLOW
   cat demos/19_structured_extraction/messy_email.txt
 
   # "First, without a schema — just ask the model to extract."
-  cat demos/19_structured_extraction/messy_email.txt | python ask_claude.py \
+  cat demos/19_structured_extraction/messy_email.txt | python scripts/ask_claude.py \
       demos/19_structured_extraction/system_prompt.txt
 
   # → The model writes prose. It might list action items in
@@ -53,7 +53,7 @@ THE PRESENTER FLOW
   #   but not machine-readable. Not consistent across runs.
 
   # "Now with a schema — same email, structured output."
-  cat demos/19_structured_extraction/messy_email.txt | python ask_claude.py \
+  cat demos/19_structured_extraction/messy_email.txt | python scripts/ask_claude.py \
       demos/19_structured_extraction/system_prompt.txt \
       --schema demos/19_structured_extraction/schema.json
 

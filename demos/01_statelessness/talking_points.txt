@@ -16,11 +16,11 @@ independent function invocation with no connection to call 1.
 
 THE PRESENTER FLOW
   # "Tell the model something"
-  cat call1.txt | python ask_claude.py system_prompt.txt
+  cat call1.txt | python scripts/ask_claude.py system_prompt.txt
   # → "I acknowledge... AURORA"
 
   # "Now ask about it in a NEW call"
-  cat call2.txt | python ask_claude.py system_prompt.txt
+  cat call2.txt | python scripts/ask_claude.py system_prompt.txt
   # → "I don't have any information about your project"
 
   # The model doesn't know. It NEVER knew in this call.

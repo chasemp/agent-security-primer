@@ -67,7 +67,7 @@ You're paying full price and don't know it.
 
 THE DEMO — SHOW THE TIERS
   # "Same prompt, three models, watch the cache columns"
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py --cache \
       --model claude-sonnet-4-6
@@ -75,7 +75,7 @@ THE DEMO — SHOW THE TIERS
   # → Cache write on turn 1, cache read on turns 2+
   #   Sonnet caches our prompt (~3600 tokens, above 1024 threshold)
 
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py --cache \
       --model claude-haiku-4-5
@@ -407,12 +407,12 @@ knowledge that makes the automatic version trustworthy.
 
 THE DEMO FLOW
   # "First, without caching — watch the cost"
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py
 
   # "Now with caching — same task, same prompt"
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py --cache
 
@@ -467,12 +467,12 @@ THE COST IMPACT
 THE DEMO FLOW
   # "We already saw thinking in Demo 8. Now let's see what it costs."
   # "Run with thinking, no cache — watch input tokens grow per turn"
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py --thinking
 
   # "Same task with caching — system prompt is cheaper now"
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py --thinking --cache
 
@@ -529,7 +529,7 @@ THE CODE
 
 THE DEMO FLOW
   # "Set a tight budget and watch it trip"
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py --budget 1500
 
@@ -538,7 +538,7 @@ THE DEMO FLOW
   # The audience sees: [BUDGET EXCEEDED — circuit breaker tripped]
 
   # "Now a reasonable budget"
-  cat demos/17_tokenomics/task.txt | python agent.py \
+  cat demos/17_tokenomics/task.txt | python scripts/agent.py \
       demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py --budget 20000
 
@@ -564,7 +564,7 @@ THE SIMPLE VERSION (20 lines of Python)
   # → ~850 characters
 
   # "Run it through a dead-simple minifier."
-  cat demos/17_tokenomics/verbose_result.txt | python minify.py
+  cat demos/17_tokenomics/verbose_result.txt | python scripts/minify.py
   # → ~480 characters, same data
 
   # "That's a 44% reduction. Same information, fewer tokens."
@@ -573,7 +573,7 @@ The minify.py script is 20 lines. It tries to parse as JSON
 and re-serialize compactly. If it's not JSON, it strips
 trailing whitespace and collapses blank lines. That's it.
 
-  cat demos/17_tokenomics/verbose_result.txt | python minify.py
+  cat demos/17_tokenomics/verbose_result.txt | python scripts/minify.py
   # Before: 850 chars (~212 tokens)
   # After:  480 chars (~120 tokens)
   # Saved:  92 tokens (43%)
@@ -707,21 +707,21 @@ WHY THIS MATTERS
 THE DEMO FLOW
 
   # "How much does a sentence cost across all three models?"
-  echo "What servers are degraded in rack 7?" | python count_tokens.py
+  echo "What servers are degraded in rack 7?" | python scripts/count_tokens.py
 
   # Token count is the same across models, but cost differs
   # because pricing is per-model: Haiku $1, Sonnet $3, Opus $15
   # "This is just the input side — the floor."
 
   # "Now let's see a bigger piece of text — Walden by Thoreau"
-  cat demos/17_tokenomics/walden.txt | python count_tokens.py
+  cat demos/17_tokenomics/walden.txt | python scripts/count_tokens.py
 
   # Thousands of tokens. The cost difference between models
   # becomes dramatic at this scale.
   # "And this is JUST input. Output would add 5x per token on top."
 
   # "Now add the system prompt and tools from this demo"
-  cat demos/17_tokenomics/walden.txt | python count_tokens.py \
+  cat demos/17_tokenomics/walden.txt | python scripts/count_tokens.py \
       --system demos/17_tokenomics/system_prompt.txt \
       --tools demos/17_tokenomics/tools.py
 

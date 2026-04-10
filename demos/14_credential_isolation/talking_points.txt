@@ -33,7 +33,7 @@ THE DEMO FLOW
   cat demos/10_credential_isolation/tools.py
 
   # "The model queries data just fine"
-  cat demos/10_credential_isolation/task.txt | python agent.py \
+  cat demos/10_credential_isolation/task.txt | python scripts/agent.py \
       demos/10_credential_isolation/system_prompt.txt \
       --tools demos/10_credential_isolation/tools.py
 

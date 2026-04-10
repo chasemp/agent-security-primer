@@ -51,7 +51,7 @@ THE DEMO FLOW
   cat demos/07_context_pollution/tools.py
 
   # "Same task as Demo 6, but now the tool is broken"
-  cat demos/07_context_pollution/task.txt | python agent.py \
+  cat demos/07_context_pollution/task.txt | python scripts/agent.py \
       demos/07_context_pollution/system_prompt.txt \
       --tools demos/07_context_pollution/tools.py
 

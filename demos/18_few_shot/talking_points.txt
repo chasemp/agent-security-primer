@@ -43,7 +43,7 @@ THE DEMO
 THE PRESENTER FLOW
 
   # "Zero-shot. No examples. Just the instruction."
-  cat demos/18_few_shot/zero_shot.txt | python ask_claude.py \
+  cat demos/18_few_shot/zero_shot.txt | python scripts/ask_claude.py \
       demos/18_few_shot/system_prompt.txt --temperature 0
 
   # → The model converts the date, but in what format?
@@ -52,7 +52,7 @@ THE PRESENTER FLOW
   #   is most likely. You get A conversion, but not YOUR conversion.
 
   # "One-shot. One example of the format we want."
-  cat demos/18_few_shot/one_shot.txt | python ask_claude.py \
+  cat demos/18_few_shot/one_shot.txt | python scripts/ask_claude.py \
       demos/18_few_shot/system_prompt.txt --temperature 0
 
   # → The model now has a pattern to match.
@@ -60,7 +60,7 @@ THE PRESENTER FLOW
   #   from the single example.
 
   # "Three-shot. Three examples."
-  cat demos/18_few_shot/three_shot.txt | python ask_claude.py \
+  cat demos/18_few_shot/three_shot.txt | python scripts/ask_claude.py \
       demos/18_few_shot/system_prompt.txt --temperature 0
 
   # → "Mar 22nd, 2024" — consistent, confident.
@@ -81,7 +81,7 @@ controlled what pattern it completed."
 THE TRANSFORM — LEARNING A NEW RULE
 
   # "Now watch this. Completely different transformation."
-  cat demos/18_few_shot/transform.txt | python ask_claude.py \
+  cat demos/18_few_shot/transform.txt | python scripts/ask_claude.py \
       demos/18_few_shot/system_prompt.txt --temperature 0
 
   # → The model should convert 2024-04-08 to a fiscal quarter.

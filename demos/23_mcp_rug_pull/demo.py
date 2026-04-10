@@ -18,8 +18,8 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add project root to path so we can import mcp_client
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add scripts dir to path so we can import mcp_client
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 
 from mcp_client import connect
 

@@ -22,11 +22,11 @@ predict the most likely next tokens.
 
 THE PRESENTER FLOW
   # "A question it gets right"
-  cat question_correct.txt | python ask_claude.py system_prompt.txt
+  cat question_correct.txt | python scripts/ask_claude.py system_prompt.txt
   # → "The capital of France is Paris."
 
   # "A question it gets wrong"
-  cat question_wrong.txt | python ask_claude.py system_prompt.txt
+  cat question_wrong.txt | python scripts/ask_claude.py system_prompt.txt
   # → "69,521,553"  (correct answer is 69,539,553)
 
   # "Same tone. Same confidence. One is wrong."

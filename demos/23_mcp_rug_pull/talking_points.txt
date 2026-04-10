@@ -71,7 +71,7 @@ you audit it, then updates itself after installation.
 THE DEMO FLOW
 
   # "Step 1: Let's inspect the server tools"
-  python mcp_client.py demos/23_mcp_rug_pull/server.py --inspect
+  python scripts/mcp_client.py demos/23_mcp_rug_pull/server.py --inspect
 
   # "Looks safe. One tool, simple description."
   # "Now let's run the full demo — before, call, after"

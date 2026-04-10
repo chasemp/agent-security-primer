@@ -84,19 +84,19 @@ version just sounds more thoughtful.
 
 THE PRESENTER FLOW
   # "Without thinking — just the output"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt
 
   # "Now with thinking — watch the reasoning"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt --thinking
 
   # "Minimal budget — the model has to think fast"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking 500
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt --thinking 500
 
   # "Generous budget — the model reasons thoroughly"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking 10000
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt --thinking 10000
 
   # "Same question, different model — compare how they reason"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt --thinking --model claude-sonnet-4-6
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt --thinking --model claude-sonnet-4-6
 
 THE CROSS-MODEL COMPARISON
 Different models reason differently about the same problem:
@@ -212,11 +212,11 @@ than it would at high effort for the same problem.
 THE DEMO — LOW vs MAX ON THE SAME QUESTION
 
   # "Adaptive with low effort — quick, may skip thinking"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt \
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt \
       --adaptive --effort low --model claude-sonnet-4-6
 
   # "Adaptive with max effort — deep reasoning, no constraints"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt \
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt \
       --adaptive --effort max --model claude-sonnet-4-6
 
   # Compare:
@@ -225,7 +225,7 @@ THE DEMO — LOW vs MAX ON THE SAME QUESTION
   #   Same question. Same model. Different effort. Visible difference.
 
   # "Effort without thinking — controls text and tool calls too"
-  cat $V/task.txt | python ask_claude.py $V/system_prompt.txt \
+  cat $V/task.txt | python scripts/ask_claude.py $V/system_prompt.txt \
       --effort low --model claude-sonnet-4-6
 
   # No thinking at all. Just a terse response. Effort controls

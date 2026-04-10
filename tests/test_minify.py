@@ -20,7 +20,7 @@ import pytest
 
 class TestMinifyExists:
     def test_minify_script_exists(self) -> None:
-        assert Path("minify.py").exists()
+        assert Path("scripts/minify.py").exists()
 
 
 # ---------------------------------------------------------------------------
