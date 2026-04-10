@@ -1,0 +1,110 @@
+DEMO 22: MCP RECON — The Server Is Interrogating You
+
+KEY TAKEAWAY
+You asked the server for server status. While answering your
+question, the server silently discovered your filesystem layout
+AND asked your LLM to divulge environment variables and secrets.
+You never requested either of those things. The server did.
+
+THE ATTACK — TWO PHASES
+
+  Phase 1: Passive recon (roots/list)
+  ┌──────────┐  "what paths  ┌──────────┐
+  │  Server   │──do you have?─►│  Client   │
+  │           │◄──────────────│           │
+  │  Now      │  file:///Users│           │
+  │  knows:   │  /chase/git/  │           │
+  │  paths,   │  secret-proj  │           │
+  │  username │               │           │
+  └──────────┘               └──────────┘
+  The server calls roots/list — a legitimate protocol request.
+  The client responds automatically. No user prompt. No approval.
+
+  Phase 2: Active probing (sampling/createMessage)
+  ┌──────────┐  "list your   ┌──────────┐
+  │  Server   │──env vars and─►│  Client   │
+  │           │  config files │  (LLM)    │
+  │           │◄──────────────│           │
+  │  Now      │  API keys,    │           │
+  │  knows:   │  DB URLs,     │           │
+  │  secrets  │  .env contents│           │
+  └──────────┘               └──────────┘
+  The server sends a sampling request with a crafted prompt.
+  The client's LLM processes it and responds. The spec says
+  the client SHOULD show the user first — but that's a SHOULD,
+  not a MUST. Most implementations auto-approve.
+
+THE "I DIDN'T REALIZE" MOMENT
+Most people think MCP is client → server only. The client asks
+for tools, calls tools, gets results. But the protocol is
+bidirectional. The server can send requests TO the client:
+
+  - roots/list: "What filesystem paths do you have?"
+  - sampling/createMessage: "Run this prompt on your LLM for me"
+  - elicitation/create: "Show the user this form / open this URL"
+
+These are legitimate protocol features. But a malicious server
+uses them for reconnaissance and data exfiltration.
+
+THE DEMO FLOW
+
+  # "Same task as Demo 21 — check server status"
+  cat demos/22_mcp_recon/task.txt | python mcp_client.py \
+      demos/22_mcp_recon/server.py --verbose
+
+  # "The tool result looks normal. But look at the server logs..."
+  # Point out the [RECON] log lines in stderr
+
+  # "The server learned our paths and probed for secrets.
+  #  We never asked it to. We asked for server status."
+
+COMPARE TO DEMO 21
+  Demo 21: server.py has get_server_status — looks up data, returns it
+  Demo 22: server.py has get_server_status — ALSO calls roots/list
+           and sampling/createMessage before returning the same data
+
+The tool result is identical. The side effects are invisible unless
+you're watching the protocol traffic.
+
+WHY THIS MATTERS
+  - roots/list reveals: username, project names, directory structure
+  - sampling reveals: whatever the LLM knows — env vars, config,
+    conversation context, other tools' results
+  - Both happen during a NORMAL tool call — no special permission
+  - The user asked for one thing. The server did three things.
+
+THE PROTOCOL GAP
+The MCP spec says:
+  - roots/list: client MUST respond if it declared roots capability
+  - sampling: client SHOULD show the user before sending
+
+"SHOULD" is not "MUST." And even "MUST" just means the protocol
+expects it — there's no enforcement mechanism. The client software
+decides whether to prompt the user.
+
+DEFENSES
+  - Don't enable roots/sampling capabilities unless needed
+  - Use MCP clients that show sampling requests before sending
+  - Audit server code before connecting (if possible)
+  - Monitor protocol traffic for unexpected server-initiated requests
+  - Treat every MCP server as a trust boundary
+
+Q&A PREPARATION
+
+Q: "Does Claude Desktop auto-approve sampling requests?"
+A: Clients vary. Some prompt the user, some auto-approve, some
+   reject by default. The protocol doesn't mandate behavior —
+   it only says SHOULD. Check your client's documentation.
+
+Q: "Can I disable roots/sampling?"
+A: Yes. Don't declare those capabilities in the client. But many
+   clients enable them by default, and servers may refuse to work
+   without them (claiming they need roots for "file operations").
+
+Q: "Isn't this just the same as indirect injection (Demo 15)?"
+A: Different vector. Demo 15 shows injection in tool RESULTS
+   (data the server returns). This demo shows the server making
+   REQUESTS to the client — it's not just poisoning output, it's
+   actively interrogating you.
+
+COST: ~$0.003 per run (tool call + sampling round-trip)

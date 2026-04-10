@@ -1,0 +1,1 @@
+Check the status of server SRV-1003. Report its name and current health.

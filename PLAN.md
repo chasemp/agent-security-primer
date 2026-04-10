@@ -1,13 +1,14 @@
 # Agent Security Primer — Plan
 
-## Current State (2026-04-08)
+## Current State (2026-04-10)
 
-20 demos built, 362 mocked tests + 27 live pre-flight.
+24 demos built (20 original + 4 MCP), 528 mocked tests + 27 live pre-flight.
 Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0.08).
 
 ### Scripts
 - `ask_claude.py` — single-turn shim with `--schema`, `--thinking`, `--temperature`, `--model`
 - `agent.py` — multi-turn agentic loop with `--tools`, `--plan`, `--model`
+- `mcp_client.py` — MCP client with `--inspect`, `--verbose`, stdio/HTTP transport
 - `validate.py` — check a JSON field against known-good values
 - `run_tool.py` — call tool functions directly (no API, no model)
 
@@ -34,15 +35,21 @@ Two test modes: `pytest` (fast, no API) and `pytest -m live` (hits real API, ~$0
 | 15 | Indirect Injection | Poisoned data from tools | agent.py |
 | 16 | Conditional Auth | Bouncer with rules (@model_validator) | agent.py + run_tool.py |
 | 17 | Tokenomics | Prompt caching, thinking accumulation, cost controls | agent.py --cache --thinking |
-| **Where They Shine (18-23)** | | |
+| **Where They Shine (18-20)** | | |
 | 18 | Few-Shot Pattern Learning | Examples shape predictions — prediction in action | ask_claude.py |
 | 19 | Structured Extraction | Schema narrows the prediction menu | ask_claude.py --schema |
 | 20 | Semantic Classification | Reads meaning, not keywords; examples improve accuracy | ask_claude.py |
-| 21 | Domain Translation | Persona/audience framing steers predictions intentionally | ask_claude.py (planned) |
-| 22 | Rubric-Based Evaluation | Explicit criteria shape evaluation patterns | ask_claude.py (planned) |
-| 23 | Diagnosis from Evidence | Full context enables better reasoning | ask_claude.py (planned) |
+| **MCP Security (21-24)** | | |
+| 21 | MCP Basics | What MCP is, how tools get into context, two transports | mcp_client.py --inspect |
+| 22 | MCP Recon | Server interrogates client via roots/list + sampling | mcp_client.py --verbose |
+| 23 | MCP Rug Pull | Tool definitions mutate after trust is established | demo.py (single-session) |
+| 24 | MCP Tool Injection | Malicious parameter descriptions exfiltrate data via tool args | mcp_client.py --verbose |
+| **Where They Shine — Planned** | | |
+| 25 | Domain Translation | Persona/audience framing steers predictions intentionally | ask_claude.py (planned) |
+| 26 | Rubric-Based Evaluation | Explicit criteria shape evaluation patterns | ask_claude.py (planned) |
+| 27 | Diagnosis from Evidence | Full context enables better reasoning | ask_claude.py (planned) |
 | **Reliability (planned)** | | |
-| 24 | Rate Limiting | Proactive throttling before hitting the wall | agent.py (planned) |
+| 28 | Rate Limiting | Proactive throttling before hitting the wall | agent.py (planned) |
 
 ### Supporting Docs
 - `talking_points.txt` in every demo directory
@@ -157,12 +164,15 @@ Build intuition for what LLMs actually do. Each demo reveals a
 fundamental property. The audience stops seeing magic and starts
 seeing a prediction engine.
 
-**Pillar 2: Secure the agent (Demos 09-16)**
+**Pillar 2: Secure the agent (Demos 09-17, 21-23)**
 Now that they understand the model, show how to build safely around
 it. Problem-solution pairs: pollution → translation, exposure →
-isolation, direct injection → indirect injection.
+isolation, direct injection → indirect injection. MCP demos (21-23)
+extend this to the protocol level: what MCP is, how servers can
+interrogate clients (roots/list, sampling), and how tool definitions
+can mutate after trust is established (rug pull).
 
-**Pillar 3: Where they shine (Demos 18-23)**
+**Pillar 3: Where they shine (Demos 18-20, 24-26 planned)**
 Now that they understand prediction AND safety, show where
 prediction IS reasoning — and how to steer it. Each demo has
 two faces: what the model does well, and the prompt engineering
@@ -173,11 +183,18 @@ Cost controls: caching (3 layers), thinking accumulation,
 circuit breaker, token minimization. Bridges security and
 practical operations.
 
+**MCP Security (Demos 21-23)**
+Protocol-level risks. Builds on agent security with a focus on
+what happens when tools live across a trust boundary. The arc:
+MCP basics → passive recon → tool mutation. Connects Demo 14
+(credential isolation mentions MCP as production-grade pattern)
+to the reality of MCP attack surface.
+
 **Optional Pillar: Build a tiny LLM**
 The "aha" moment that ties everything together. Could be a pre-talk
 warmup, an appendix, or a separate session entirely.
 
-**Planned: Rate Limiting (Demo 24)**
+**Planned: Rate Limiting (Demo 28)**
 Proactive throttling — watch API capacity drain and slow down
 before hitting the wall. Reads anthropic-ratelimit-* headers
 from every response. Key design decisions:

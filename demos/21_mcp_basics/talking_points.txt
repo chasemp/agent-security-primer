@@ -1,0 +1,120 @@
+DEMO 21: MCP BASICS — What Is MCP and How Does It Work?
+
+KEY TAKEAWAY
+MCP (Model Context Protocol) is JSON-RPC for LLM tools. A server
+declares tools as JSON schemas. Your agent discovers them, injects
+them into the LLM's context, and routes tool calls back to the
+server. The model sees the same tool_use format whether the tool
+is local code or a remote MCP server.
+
+WHAT IS MCP?
+Think of MCP as "remote skills" for your agent. Instead of defining
+tools in a Python file next to your code (like demos 09-16), the
+tools live in a separate process — the MCP server. Your agent
+connects, asks "what tools do you have?", and gets back JSON schemas
+identical to what we've been sending to the API all along.
+
+  ┌──────────┐   JSON-RPC   ┌──────────┐
+  │  Client   │◄────────────►│  Server   │
+  │ (agent)   │              │ (tools)   │
+  │           │  1. connect  │           │
+  │           │  2. discover │           │
+  │           │  3. call     │           │
+  │           │  4. result   │           │
+  └──────────┘              └──────────┘
+
+The protocol has four phases:
+  1. CONNECT — client opens a transport (stdio or HTTP)
+  2. INITIALIZE — capability exchange (what can each side do?)
+  3. DISCOVER — client asks for tool list (tools/list)
+  4. OPERATE — client calls tools, server returns results
+
+TWO TRANSPORTS, SAME PROTOCOL
+
+  stdio:
+  ┌────────┐  stdin/stdout  ┌────────┐
+  │ Client │◄──────────────►│ Server │
+  └────────┘  (subprocess)   └────────┘
+  Client owns the process. Dies when client closes.
+  Same machine only. No network exposure.
+
+  HTTP (Streamable HTTP):
+  ┌────────┐   POST / SSE   ┌────────┐
+  │ Client │◄──────────────►│ Server │
+  └────────┘   (network)     └────────┘
+  Server runs independently. Can serve many clients.
+  Network-accessible. Can be remote.
+
+The messages are identical JSON-RPC either way. The transport is
+just plumbing. This matters for security: the risks we'll show
+in the next demos work over BOTH transports.
+
+THE DEMO FLOW
+
+  # "What does the server look like? Just a Python file."
+  cat demos/21_mcp_basics/server.py
+
+  # "Inspect: connect and discover tools. No LLM, no API key."
+  python mcp_client.py demos/21_mcp_basics/server.py --inspect
+
+  # "Full run: client connects, LLM calls the tool, result comes back."
+  cat demos/21_mcp_basics/task.txt | python mcp_client.py \
+      demos/21_mcp_basics/server.py --verbose
+
+  # "Same thing over HTTP — start the server, then connect."
+  python demos/21_mcp_basics/server.py --http &
+  cat demos/21_mcp_basics/task.txt | python mcp_client.py \
+      http://localhost:8000/mcp --verbose
+
+CONNECTION TO EARLIER DEMOS
+In demos 09-16, tools were Python functions loaded from a .py file:
+
+  TOOL_DEFINITIONS = [{"name": "restart_server", ...}]
+  TOOL_HANDLERS = {"restart_server": restart_server}
+
+With MCP, the tool definitions come FROM the server, and the tool
+execution happens ON the server. But the model sees the exact same
+JSON schema. From the LLM's perspective, nothing changed. It still
+proposes tool_use blocks, and your code still executes them.
+
+The difference is WHO executes:
+  - Local tools (agent.py): your code calls a Python function
+  - MCP tools (mcp_client.py): your code sends JSON-RPC to a server
+
+This is why MCP introduces new risk surface: you're now trusting
+someone else's code to declare honest tool schemas and return
+honest results. The next demos show what happens when that trust
+is misplaced.
+
+WHAT THE CLIENT DECLARES
+During initialization, the client tells the server what it supports:
+
+  - roots: "I'll tell you my filesystem paths if you ask"
+  - sampling: "I'll run my LLM on prompts you send me"
+
+These are opt-in capabilities. But most clients enable them by
+default. And most users don't know they're enabled. The server
+now has abilities the user never explicitly granted.
+
+Q&A PREPARATION
+
+Q: "How is this different from just calling an API?"
+A: It's not, fundamentally. MCP is a standardized protocol for
+   tool discovery and execution. The value is interoperability —
+   one server works with Claude Desktop, VS Code, any MCP client.
+   The risk is that standardization also standardizes the attack
+   surface.
+
+Q: "Do I need MCP? Can't I just use local tools?"
+A: For simple agents, local tools are fine (and safer). MCP shines
+   when tools are maintained by another team, need their own
+   credentials, or are shared across multiple agents. But every
+   MCP connection is a trust boundary you need to evaluate.
+
+Q: "Is this like function calling?"
+A: MCP is the plumbing that DELIVERS tool definitions to the API
+   and routes tool calls back. Function calling / tool_use is the
+   API-level mechanism. They work together: MCP discovers, the API
+   calls, MCP executes.
+
+COST: ~$0.002 per run (single tool call)
