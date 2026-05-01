@@ -1,0 +1,59 @@
+ATTENTION — Which tokens look at which tokens?
+
+Each row is a token deciding what to pay attention to.
+Dark = high attention. Light = low attention. Empty = masked (can't see future).
+
+                 Dear   Mom    I     miss   you    so    much
+          ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+   Dear   │ ████ │      │      │      │      │      │      │
+          ├──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+   Mom    │ ▓▓▓▓ │ ████ │      │      │      │      │      │
+          ├──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+   I      │  ░░  │ ▒▒▒▒ │ ████ │      │      │      │      │
+          ├──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+   miss   │  ░░  │ ▓▓▓▓ │ ▒▒▒▒ │ ████ │      │      │      │
+          ├──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+   you    │  ░░  │ ████ │  ░░  │ ▓▓▓▓ │ ████ │      │      │
+          ├──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+   so     │      │  ░░  │  ░░  │ ▒▒▒▒ │ ▒▒▒▒ │ ████ │      │
+          ├──────┼──────┼──────┼──────┼──────┼──────┼──────┤
+   much   │      │  ░░  │      │ ▓▓▓▓ │  ░░  │ ████ │ ████ │
+          └──────┴──────┴──────┴──────┴──────┴──────┴──────┘
+
+Reading the grid:
+  "miss" attends heavily to "Mom" — who is being missed
+  "you" attends heavily to "Mom" — who "you" refers to
+  "much" attends heavily to "so" and "miss" — it's an intensifier
+  "Dear" only sees itself — it's the first token, nothing before it
+
+The upper-right triangle is empty: the CAUSAL MASK.
+Each token can only see itself and tokens BEFORE it.
+This prevents the model from "cheating" by looking at the answer.
+
+  ┌──────────────────────────────────┐
+  │ THE CAUSAL MASK                  │
+  │                                  │
+  │   1  ·  ·  ·  ·  ·  ·           │
+  │   1  1  ·  ·  ·  ·  ·           │
+  │   1  1  1  ·  ·  ·  ·           │
+  │   1  1  1  1  ·  ·  ·           │
+  │   1  1  1  1  1  ·  ·           │
+  │   1  1  1  1  1  1  ·           │
+  │   1  1  1  1  1  1  1           │
+  │                                  │
+  │   1 = can attend                 │
+  │   · = masked (set to -infinity   │
+  │       before softmax, so the     │
+  │       attention weight becomes 0)│
+  └──────────────────────────────────┘
+
+
+MULTI-HEAD ATTENTION — Different heads listen for different things
+
+  Head 1 (names)           Head 2 (sentiment)       Head 3 (structure)
+  "miss" → "Mom" ████     "miss" → "miss" ████     "miss" → "I" ████
+  "you" → "Mom" ████      "much" → "miss" ████     "much" → "so" ████
+  "Mom" → "Dear" ████     "so" → "miss" ████       "you" → "miss" ████
+
+  Each head specializes. The model combines all heads for a full picture.
+  n_head = 4 means 4 simultaneous "conversations" about the same tokens.

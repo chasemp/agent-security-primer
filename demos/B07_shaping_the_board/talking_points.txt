@@ -1,0 +1,166 @@
+KEY TAKEAWAY
+Reinforcement Learning doesn't teach the model new facts. It
+reshapes which patterns the model prefers. Same weights, same
+knowledge, different tendencies. The model before RL and after RL
+are the same "person" with different habits.
+
+BACKGROUND
+B05 and B06 showed how reward signals train the model. B07 zooms
+out to show the result: what does RL actually change?
+
+Pre-training (B02) built a model that writes generic camp letters.
+It knows all the patterns — friendship, homesickness, adventure,
+food, growth. RL didn't add new patterns. It made certain patterns
+more likely to fire.
+
+Think of the pre-trained model as a pinball machine (the "Plinko
+board"). The pegs are set by pre-training — they represent what
+the model knows about language. RL doesn't add new pegs. It tilts
+the board so the ball is more likely to fall through certain
+channels.
+
+This demo shows the before and after: same model, same prompt,
+different output distribution. The audience sees that RL is about
+PREFERENCE, not KNOWLEDGE.
+
+This is the foundation for understanding RLHF (Reinforcement
+Learning from Human Feedback), which is what turns a raw language
+model into an assistant that's helpful, harmless, and honest.
+Pre-training gives it language. RLHF gives it manners.
+
+THE DEMO
+1. Generate 10 letters from the pre-trained model (before RL)
+2. Categorize them: how many mention friends, adventure, food, etc.
+3. Show the RL-trained model (from B06) generating 10 letters
+4. Categorize those: friendship theme is now dominant
+5. Same prompt, same model architecture, different distribution
+6. Show what DIDN'T change: letter structure, grammar, names
+
+PRESENTER FLOW
+
+Step 1: Generate a batch from the pre-trained model.
+  python scripts/rl_demo.py corpus/camp_letters.txt --generate --count 10 --model pretrained
+
+Show the distribution. Maybe 2 mention friends, 2 mention food,
+2 are adventure, 1 homesick, 3 generic. Roughly uniform across
+themes because the training data has equal representation.
+
+Step 2: Generate a batch from the RL-trained model.
+  python scripts/rl_demo.py corpus/camp_letters.txt --generate --count 10 --model rl
+
+Show the distribution. Maybe 7 mention friends, 1 food, 1
+adventure, 1 generic. The friendship theme dominates.
+
+Step 3: Side-by-side comparison.
+Pick one pre-trained letter and one RL-trained letter. Point out:
+
+What CHANGED:
+  - Topic focus (generic → friendship-heavy)
+  - Word choice ("the lake" → "Kai and I at the lake")
+  - Emotional tone (neutral → warm/connected)
+
+What DIDN'T change:
+  - Letter structure (Dear Mom ... Love, Name)
+  - Grammar and spelling
+  - Character names from the corpus
+  - Sentence length and style
+
+The model didn't learn new facts. It learned to prefer certain
+patterns over others.
+
+Step 4: The "tilted board" visualization.
+  python scripts/rl_demo.py corpus/camp_letters.txt --topic-distribution --compare
+
+Show a bar chart (or ASCII bars) of topic frequencies:
+
+  Pre-trained:  adventure ████  friendship ██  food ███  homesick ██  growth ██
+  After RL:     adventure █    friendship ████████  food █  homesick █  growth █
+
+Same total output. Different distribution. The board was tilted.
+
+Step 5: Try a different reward.
+  python scripts/rl_demo.py corpus/camp_letters.txt --train --reward adventure --steps 100
+  python scripts/rl_demo.py corpus/camp_letters.txt --generate --count 5
+
+Now the model writes adventure-heavy letters. The friendship bias
+is gone. Different reward, different tilt, same underlying model.
+
+The audience sees: RL is a knob. The pre-trained model is the
+instrument. RL decides which notes it plays more often.
+
+WHY THIS MATTERS
+This is the mechanism behind every "aligned" AI model:
+
+1. Pre-train on internet text → model knows everything, has no
+   preferences, no safety, no helpfulness. Raw prediction engine.
+
+2. RLHF (or RLAIF) → tilt the board toward helpful, harmless,
+   honest outputs. Same knowledge, different preferences.
+
+3. The safety implications: RL doesn't REMOVE dangerous knowledge.
+   It makes dangerous outputs less probable. With enough prompting
+   (jailbreaks), you can sometimes "un-tilt" the board and access
+   patterns the model was trained away from. The knowledge is still
+   in the weights — it's just been de-prioritized.
+
+This connects to Pillar 2:
+- Injection (Demo 02): works partly because the injected text
+  can shift the model's "preferred" patterns back toward behaviors
+  that RL suppressed.
+- Confidence (Demo 04): the model's confidence comes from
+  pre-training patterns. RL reshapes which patterns fire but
+  doesn't make the model more calibrated about uncertainty.
+- Extended thinking: the model was RL-trained so that producing
+  reasoning tokens before answering gets rewarded. It's the same
+  mechanism as our friendship reward — just applied to reasoning
+  patterns instead of friendship patterns.
+
+The "and, and, and" insight: none of these layers replaced the
+previous one. Pre-training AND RL AND extended thinking AND tool
+use AND evaluation. Each layer assumes everything below it works.
+Attention didn't obsolete symbolic reasoning — it created a
+substrate where reasoning patterns could emerge statistically.
+RL didn't replace pre-training — it shaped which of the learned
+patterns get expressed.
+
+Q&A PREPARATION
+
+Q: "If RL just tilts preferences, can't you 'un-tilt' it?"
+A: In principle, yes. This is what jailbreaks attempt. The
+   pre-trained knowledge still exists in the weights — RL just
+   made certain outputs less probable, not impossible. This is an
+   active area of safety research.
+
+Q: "Is this why fine-tuning on bad data is dangerous?"
+A: Exactly. If someone fine-tunes (a form of RL) on harmful data,
+   they can tilt the board toward dangerous patterns. The base
+   model already knows how to produce harmful text — fine-tuning
+   just makes it prefer to.
+
+Q: "How is this different from just adding words to the prompt?"
+A: Prompting is softwiring — temporary influence through the
+   context window. RL is hardwiring — permanent changes to the
+   weights. A prompt can suggest friendship, but the model might
+   ignore it. After RL, the model's default tendency IS friendship.
+
+Q: "Could you RL a model to be worse?"
+A: Yes. If the reward function is bad, the model degrades. This is
+   called "reward hacking" — the model finds a shortcut that
+   maximizes the reward without actually achieving the goal. Our
+   B05 outcome reward showed a mild version: the model learned to
+   shoehorn the word "friend" rather than write naturally about
+   friendship.
+
+COST
+$0.00 — no API calls, runs locally.
+
+DEPENDENCIES
+PyTorch. Uses both the B02 pre-trained model and the B05/B06
+RL-trained models.
+
+SCRIPT NEEDED
+Same scripts/rl_demo.py — adds:
+  --model pretrained|rl    Select which model to generate from
+  --topic-distribution     Count topics in generated output
+  --compare                Overlay pre/post distributions
+  --reward THEME           Train with a different reward theme

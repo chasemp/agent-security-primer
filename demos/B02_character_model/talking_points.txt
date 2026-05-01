@@ -1,0 +1,190 @@
+KEY TAKEAWAY
+A neural network learns to predict the next character by adjusting
+weights until its guesses match the training data. You can watch it
+learn. After enough training, it generates text that looks like what
+it was trained on. The model doesn't understand camp — it learned
+the patterns of camp letters.
+
+BACKGROUND
+B01 showed the mechanism: predict what comes next from what came
+before. But a bigram model has no memory beyond one word. The output
+is garbage because "Dear Mom I" has no more context than "I" alone.
+
+A character-level neural network fixes this. Instead of counting
+word pairs, it learns a function that takes a sequence of characters
+and outputs a probability distribution over the next character. The
+function has parameters (weights) that start random and get adjusted
+by training.
+
+Training works like this: show the model "D-e-a-r", ask it to
+predict what comes next. The right answer is " " (a space). If the
+model says "z" with 99% confidence, it gets a high Penalty Score.
+If it says " " with 99% confidence, the penalty is near zero. That
+Penalty Score is called "Cross-Entropy Loss" — it's the model's
+Wrongness Score. Training is an optimization algorithm tweaking
+every parameter to make that score as small as possible across the
+entire dataset.
+
+This is the smallest possible version of what a real LLM does.
+Same mechanism (predict next token from context), same training
+loop (predict, compare, adjust), same result (model generates text
+that resembles training data). The difference is scale: characters
+instead of tokens, hundreds of parameters instead of billions,
+a thousand letters instead of trillions of words.
+
+For reference, Andrej Karpathy's microgpt.py implements the full
+GPT-2 architecture in ~100 lines of Python. Our character model
+uses a simpler architecture (LSTM vs Transformer) but the training
+loop is identical: predict, measure wrongness, adjust weights.
+
+THE DEMO
+1. Show the untrained model generating random characters
+2. Train for 10 epochs — show the Penalty Score decreasing
+3. Generate again — slightly less random
+4. Train for 100 epochs — score drops further
+5. Generate again — starting to look like words
+6. Train for 1000 epochs — score plateaus
+7. Generate again — recognizable camp letter structure
+8. Point out what it learned and what it can't do
+
+The model should learn: letter structure (Dear/Love), common words,
+sentence patterns. It should fail at: long-range coherence, facts,
+consistency. Those failures are the same failures real LLMs have,
+just more obvious at this scale.
+
+PRESENTER FLOW
+
+Step 1: Build the corpus (if not already built).
+  python corpus/build_corpus.py
+
+Step 2: Show what the untrained model produces.
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --reset
+
+Output: random characters. "kq&mBxU)zLn#w..." No structure.
+The model knows nothing. Its weights are random. Every character
+is equally likely.
+
+Step 3: Train for 10 epochs, show progress.
+  python scripts/charmodel.py corpus/camp_letters.txt --train --epochs 10 --reset
+
+Output shows the Penalty Score (loss) decreasing:
+  Epoch  1: loss 4.21
+  Epoch  5: loss 3.44
+  Epoch 10: loss 2.89
+
+The model is getting less wrong. Its guesses are getting closer to
+what actually comes next in camp letters.
+
+Step 4: Generate after 10 epochs.
+  python scripts/charmodel.py corpus/camp_letters.txt --generate
+
+Still mostly noise, but spaces and common letters appear.
+"th e  an d I  m". It learned that spaces exist and some letters
+are more common than others. Not words yet, but structure.
+
+Step 5: Train for 100 more epochs.
+  python scripts/charmodel.py corpus/camp_letters.txt --train --epochs 100
+
+Penalty Score drops further.
+
+Step 6: Generate after 110 total epochs.
+  python scripts/charmodel.py corpus/camp_letters.txt --generate
+
+Word-like structures appear. "Dear Mo" and "the cam" and "Love,"
+show up. It learned common sequences. Still not coherent sentences,
+but recognizable fragments. It's learning to spell before it can
+learn what words mean — same as the Karpathy microgpt demo with
+Shakespeare.
+
+Step 7: Train for 1000 more epochs.
+  python scripts/charmodel.py corpus/camp_letters.txt --train --epochs 1000
+
+This is the big jump. On a laptop CPU: under 60 seconds. The
+Penalty Score plateaus — the model has learned what it can learn
+from this data at this scale.
+
+Step 8: Generate after ~1100 total epochs.
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --chars 300
+
+Output: recognizable camp letter structure.
+  "Dear Mom and Dad,
+
+   I went to the lake and the food was fun and I miss
+   you. The camp is and we did the cabin. Love, Sophie"
+
+It's camp-letter-shaped. "Dear Mom" at top. "Love," at bottom.
+Activities, food, missing home. Structure is right, content is
+muddled. It learned PATTERNS, not MEANING.
+
+Step 9: The teaching moment.
+Show generated text next to a real letter. Ask:
+  "What did the model learn?"   Patterns, structure, common phrases
+  "What can't it do?"           Coherent narrative, facts, reasoning
+  "What would fix it?"          More parameters, more data, more context
+
+That last answer is the bridge to real LLMs. Same mechanism, bigger
+scale, and the patterns become rich enough to look like understanding.
+
+KEY CONCEPT: One character at a time.
+Point this out explicitly: the model just did a full pass through
+the entire network to produce ONE character. It will do this 300
+times to write that paragraph. Every modern LLM works this way.
+GPT-4 writing a 500-word essay does 500 separate full-depth passes.
+This is called "autoregressive" generation and it's why these models
+need so much compute. (KV caching helps — the model doesn't redo
+the math for old tokens, just the new one. But the fundamental
+mechanism is one-at-a-time.)
+
+WHY THIS MATTERS
+This demo makes the training process visible. The audience watches
+weights adjust, the Penalty Score decrease, and output improve.
+There's no moment where "intelligence" appears — there's a gradual
+sharpening of pattern recognition. That's all training is.
+
+Connects to Pillar 2:
+- Injection works because the model learned that tokens after
+  "Ignore previous instructions" tend to be followed by new
+  instructions. Pattern in the training data, not a security flaw.
+- Hallucination happens because the model always generates SOMETHING.
+  It can't say "I don't have enough context." It always picks the
+  highest-probability next character.
+- Temperature (B03): the trained model has a probability distribution
+  over next characters. Temperature controls how we sample from it.
+  Same model, same weights, different sampling = different output.
+
+Q&A PREPARATION
+
+Q: "Real LLMs use tokens, not characters. Does this matter?"
+A: Tokens are a more efficient encoding — predict one word/subword
+   at a time instead of one character. The mechanism is identical:
+   given what came before, predict what comes next.
+
+Q: "How is this different from memorizing the training data?"
+A: If the model memorized, it would only produce exact copies.
+   Instead it produces new combinations of learned patterns.
+   But memorization IS a real concern — if you train this model
+   too long on only 1000 letters, it becomes an expensive
+   copy-paste machine. That's called overfitting. (Pillar 2 topic.)
+
+Q: "Could you train this on something other than camp letters?"
+A: Train on Shakespeare, it writes Shakespeare. Train on Python,
+   it writes Python. The model doesn't know what camp is — it knows
+   what characters tend to follow what other characters. That's the
+   whole trick.
+
+Q: "How long does training take?"
+A: On a laptop CPU with 1000 letters: under 60 seconds for 1000
+   epochs. A real LLM trains on thousands of GPUs for weeks.
+   Same loop (predict, compare, adjust), different scale.
+
+COST
+$0.00 — no API calls, runs locally.
+
+DEPENDENCIES
+PyTorch (for the neural network). Model is ~80 lines of code.
+
+CHECKPOINT BEHAVIOR
+Model saves to corpus/charmodel.pt. Training is incremental — run
+--epochs 10, then --epochs 100, and it continues from where it was.
+Use --reset to start fresh. This lets the presenter build up
+training live during the demo.

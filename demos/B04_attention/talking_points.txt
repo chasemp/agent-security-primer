@@ -1,0 +1,141 @@
+KEY TAKEAWAY
+Attention is the mechanism that lets every token see every other
+token. It solves the "bag of words" problem — without it, the model
+can't tell "The dog bit the man" from "The man bit the dog."
+
+BACKGROUND
+B02 used an LSTM, which processes tokens one at a time in order.
+This works but has a bottleneck: information from the start of a
+long sequence has to pass through every intermediate step to reach
+the end. By the time it arrives, it's degraded.
+
+Attention (Vaswani et al., 2017 — "Attention Is All You Need") takes
+a different approach: every token can look directly at every other
+token. No bottleneck. Token 500 can attend to Token 1 as easily as
+Token 499.
+
+The mechanism uses three projections of each token:
+  Query (Q):  "What am I looking for?"
+  Key (K):    "What information do I contain?"
+  Value (V):  "If I'm relevant, here is my content."
+
+The dot product of Q and K determines how much attention to pay.
+High dot product = high relevance = high attention weight. The
+output is a weighted sum of the Values.
+
+The "causal" mask: in generation, token N cannot see tokens after
+it. This prevents "cheating" — the model can't look at the answer
+while predicting it. Implemented as a lower-triangular matrix of
+ones.
+
+Multi-head attention: instead of one attention calculation, the
+model runs several in parallel (n_head). Think of it as clones at
+a party — Head 1 listens for names, Head 2 for emotional tone,
+Head 3 for sentence structure. The model combines all heads for a
+richer understanding. The "resolution" of each head's listening is
+controlled by n_embd (the embedding dimension) — 128 is grainy,
+1024 is high-definition.
+
+THE DEMO
+This demo visualizes attention weights on short camp-letter phrases
+to show which tokens attend to which.
+
+1. Show "bank" example: same word, different meaning based on context
+2. Show attention weights on a camp letter phrase
+3. Show how the causal mask prevents looking ahead
+
+PRESENTER FLOW
+
+Step 1: The "bank" problem (conceptual, no code).
+Show two sentences:
+  "I went to the bank to deposit money."
+  "I sat on the river bank and watched the water."
+
+Ask: "When the word 'bank' first enters the model as a token, its
+vector is identical in both sentences. How does the model know
+which meaning to use?"
+
+Answer: Attention. The model looks at surrounding tokens — "money"
+pulls the bank vector toward financial meaning, "river" pulls it
+toward geographical meaning. By the time the vector exits the
+attention layer, it's been updated to reflect the correct sense.
+
+Step 2: Visualize attention on a camp letter phrase.
+  python scripts/attention_viz.py "Dear Mom I miss you so much"
+
+Output: a matrix showing attention weights. Each row is a token
+looking at every other token. High weights are highlighted.
+
+Point out: "miss" likely attends strongly to "Mom" and "you."
+"Dear" attends to "Mom" (it's a greeting pattern). "so" attends
+to "much" (common collocation).
+
+Step 3: The causal mask.
+  python scripts/attention_viz.py "Dear Mom I miss" --show-mask
+
+Show the triangular mask: "Dear" can only see itself. "Mom" can
+see "Dear" and itself. "I" can see "Dear," "Mom," and itself.
+Each token only sees what came before it.
+
+Ask: "Why?" Because during generation, the model predicts one
+token at a time. When predicting what comes after "miss," it
+shouldn't be able to see the answer.
+
+Step 4: Multi-head comparison.
+  python scripts/attention_viz.py "Dear Mom I really miss you and Dad" --heads
+
+Show different attention heads attending to different patterns.
+One head might focus on "Mom" and "Dad" (names). Another might
+focus on "miss" and "really" (sentiment). The model combines
+these perspectives.
+
+WHY THIS MATTERS
+Attention is why the context window matters so much. Every token
+attends to every other token — that's O(n^2) compute. Double
+the context window, quadruple the attention cost.
+
+This is also why prompt position matters (Demo 05 in Pillar 2).
+Tokens at different positions get different attention weights.
+Information at the start and end of the context window tends to
+get more attention than information in the middle (though this
+varies by model and has been largely mitigated in current Claude).
+
+The causal mask is architecturally identical to why injection
+works (Demo 02): there's no structural boundary between "system
+prompt" and "user input." They're all just tokens in a sequence,
+and the attention mechanism treats them all the same way.
+
+Q&A PREPARATION
+
+Q: "This looks like just matrix multiplication."
+A: It is. The entire attention mechanism is matrix multiply, mask,
+   softmax, matrix multiply. No symbolic reasoning, no rules.
+   Patterns in the weights determine what attends to what.
+
+Q: "Why is this better than what B02's LSTM does?"
+A: The LSTM processes tokens in order — information degrades over
+   long distances. Attention lets any token attend directly to any
+   other token. Token 1000 can "see" Token 1 just as clearly as
+   Token 999.
+
+Q: "Is this what people mean by 'Transformer'?"
+A: Yes. The Transformer architecture is essentially: attention
+   (tokens communicate) + MLP (each token processes what it
+   learned) + residual connections (gradients flow freely) +
+   layer norm (keep numbers stable). Stack that 12-96 times.
+   That's a Transformer. Karpathy's microgpt.py implements the
+   full thing in ~100 lines.
+
+COST
+$0.00 — no API calls, runs locally.
+
+DEPENDENCIES
+PyTorch. May need a small transformer model (not the LSTM from B02)
+or a pre-built visualization using Karpathy-style attention code.
+
+SCRIPT NEEDED
+scripts/attention_viz.py — visualize attention weights on short
+text sequences. Needs:
+  --heads       Show per-head attention patterns
+  --show-mask   Overlay the causal mask
+Output: ASCII or terminal-colored attention matrix.

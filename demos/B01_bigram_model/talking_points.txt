@@ -1,0 +1,117 @@
+KEY TAKEAWAY
+A language model is a machine that predicts what comes next. A bigram
+model is the simplest possible version: count word pairs, sample the
+next word from those counts. That's it. Everything else is scale.
+
+BACKGROUND
+Before showing the audience an LLM, show them the mechanism stripped
+to its bones. A bigram model counts how often word B follows word A
+in a corpus. "Dear" is followed by "Mom" 68% of the time, "Dad" 24%,
+"Mom and" 8%. To generate text, pick a starting word, sample the
+next word from its distribution, repeat.
+
+The output is bad. That's the point. The mechanism is visible BECAUSE
+it's bad. The audience sees exactly why the model says what it says —
+there's no hidden reasoning, no understanding, just conditional
+probability. When you scale this mechanism to billions of parameters
+and trillions of tokens, the output gets sophisticated enough to
+look like thought. But the mechanism never changes.
+
+This is the "shave and a haircut" moment. The audience's brain
+completes the pattern the same way the model does. The difference
+is scale, not kind.
+
+THE DEMO
+1. Show a few camp letters so the audience knows the corpus
+2. Run the bigram counter — show the raw probability tables
+3. Generate text from the bigram model
+4. Point out: it sounds vaguely like a camp letter but it's nonsense
+5. Ask: "What's missing?" (Answer: context beyond one word)
+
+The audience should leave thinking: "I understand the mechanism.
+It's just counting and sampling. The magic is in the scale."
+
+PRESENTER FLOW
+
+Step 1: Look at a few letters from the corpus.
+  cat corpus/camp_letters.d/arrival/001.txt
+  cat corpus/camp_letters.d/homesick/003.txt
+  cat corpus/camp_letters.d/adventure/002.txt
+
+Step 2: Build the bigram table from the full corpus.
+  python corpus/build_corpus.py --stats
+  python scripts/bigram.py corpus/camp_letters.txt --table
+
+This prints the top 20 bigram pairs and their probabilities.
+Point out: "Dear -> Mom" is high, "Mom -> and" is high,
+"Love -> Sophie/Jordan/Lily" shows up. The model learned the
+structure of a letter from counting pairs.
+
+Step 3: Generate text from the bigram model.
+  python scripts/bigram.py corpus/camp_letters.txt --generate --words 50
+
+Output will be something like:
+  "Dear Mom I miss the lake and I was scared but the food
+   is the cabin and we did it and Love Jordan"
+
+It's recognizably camp-letter-shaped but incoherent. Point out
+specific failures: "the food is the cabin" — the model only sees
+one word of context, so "is" can be followed by anything that
+ever followed "is" in the corpus.
+
+Step 4: Generate multiple times to show variation.
+  python scripts/bigram.py corpus/camp_letters.txt --generate --words 50
+  python scripts/bigram.py corpus/camp_letters.txt --generate --words 50
+
+Same model, different output each time. The sampling is stochastic.
+This is temperature before we call it temperature.
+
+Step 5: Generate with only one category.
+  python corpus/build_corpus.py --categories homesick
+  python scripts/bigram.py corpus/camp_letters.txt --generate --words 50
+
+Now the output skews toward "miss," "home," "want." The training
+data shaped the predictions. Same mechanism, different data,
+different personality. Rebuild the full corpus afterward:
+  python corpus/build_corpus.py
+
+WHY THIS MATTERS
+This is the conceptual foundation for everything in Pillar 2.
+
+Injection works because the model predicts based on ALL tokens
+in its context. It can't distinguish "instruction" from "data"
+because both are just tokens with statistical relationships.
+
+Hallucination happens because the model always predicts SOMETHING.
+The bigram model will always pick a next word, even when the
+sequence has gone off the rails. It can't say "I don't know."
+
+Confidence is uncalibrated because the model's probabilities are
+about word co-occurrence, not truth. A high-probability next word
+is frequent, not correct.
+
+The connection to real models: a bigram model IS a first-order
+Markov chain. Modern LLMs are essentially very high-order Markov
+models with learned representations. Same mechanism, more context.
+(See Karpathy's microgpt.py for what this looks like at
+transformer scale: ~100 lines of real GPT-2 architecture.)
+
+Q&A PREPARATION
+
+Q: "This is trivially simple. Real LLMs are way more complex."
+A: The architecture is different (transformers, attention, billions
+   of parameters). But the mechanism — predict the next token from
+   what came before — is identical. This model sees one word of
+   context. GPT-4 sees 128,000 tokens of context. Both are doing
+   conditional probability over sequences.
+
+Q: "Why not just show GPT/Claude from the start?"
+A: Because you can't see the mechanism when it works well. A bigram
+   model fails in ways that expose the machinery. Once you see the
+   machinery, you can recognize it in the sophisticated version.
+
+Q: "What's the difference between this and Markov chains?"
+A: Nothing. A bigram model IS a first-order Markov chain.
+
+COST
+$0.00 — no API calls, runs locally.

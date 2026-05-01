@@ -7,3 +7,7 @@ dist/
 build/
 *.db
 .env
+
+# Generated training artifacts (regen with charmodel.py / attention_viz.py / build_corpus.py)
+*.pt
+corpus/camp_letters.txt

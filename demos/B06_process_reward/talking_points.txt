@@ -1,0 +1,148 @@
+KEY TAKEAWAY
+Process reward scores each step, not just the final output. The model
+learns faster from the same data because each signal tells it exactly
+where the output went right or wrong.
+
+BACKGROUND
+B05 showed outcome-only reward: generate the full letter, score
+pass/fail at the end. Slow convergence, noisy curve. The model has
+to guess what worked.
+
+Process reward is the fix. Instead of scoring the complete output,
+score each sentence (or segment). "Did this sentence contribute to
+the friendship theme?" gives the model precise, local feedback.
+
+A wrong sentence gets corrective signal AT that sentence, not at
+the end. The model can explore more aggressively because the cost
+of a wrong sentence is local, not global. A bad sentence doesn't
+invalidate the whole letter.
+
+The same training data, the same reward goal, but radically more
+information per example. Fewer training steps, faster convergence,
+better output quality.
+
+This is the insight that made DeepSeek R1 competitive with models
+trained at 10-40x the cost. They focused on domains where precise
+reward signals are cheap to produce (math, code — where each step
+can be verified automatically). Less data, less compute, but each
+training step does more work because the signal is clean.
+
+THE DEMO
+1. Reset to the same pre-trained model as B05
+2. Define the same goal: "letters that mention making friends"
+3. Run RL training with process reward (per-sentence scoring)
+4. Show the loss curve — faster convergence, less noise
+5. Side-by-side comparison with B05's curve
+6. Generate — output is more natural than B05's
+
+PRESENTER FLOW
+
+Step 1: Reset to pre-trained baseline.
+  python scripts/rl_demo.py corpus/camp_letters.txt --generate --count 3
+
+Same starting point as B05. Generic camp letters.
+
+Step 2: Define the process reward function.
+  python scripts/rl_demo.py corpus/camp_letters.txt --show-reward process
+
+Display the reward function:
+  "Score each sentence independently:
+   1.0 if the sentence mentions friendship/togetherness
+   0.5 if the sentence is neutral but coherent
+   0.0 if the sentence is incoherent or off-topic"
+
+Point out the difference: B05 scored the whole letter once.
+This scores every sentence. The model knows WHICH sentences
+helped and which didn't.
+
+Step 3: Run RL training with process reward.
+  python scripts/rl_demo.py corpus/camp_letters.txt --train --reward process --steps 200
+
+Show the reward curve: starts at the same level as B05 (~0.2),
+but climbs faster and smoother. After 200 steps, reward is
+higher than B05's (~0.7-0.8 vs 0.5-0.6).
+
+Step 4: Side-by-side curves.
+  python scripts/rl_demo.py corpus/camp_letters.txt --show-curve --compare
+
+Display both curves overlaid:
+  - Outcome (B05): slow, noisy, lower plateau
+  - Process (B06): fast, smooth, higher plateau
+
+Same data. Same goal. Same number of training steps. The only
+difference is the quality of the feedback signal.
+
+Step 5: Generate after process RL.
+  python scripts/rl_demo.py corpus/camp_letters.txt --generate --count 5
+
+Letters mention friends more naturally. The friendship themes are
+woven in rather than shoehorned. The model learned "write about
+friendship" not just "include the word friend."
+
+Step 6: Compare outputs.
+Show a B05 output and a B06 output side by side. B05 might have
+"The food was OK. I have a friend." B06 might have "Kai and I
+spent the whole afternoon at the lake together." The quality gap
+comes from the quality of the feedback, not the amount of training.
+
+WHY THIS MATTERS
+This is the core insight behind modern "reasoning" models (o1,
+DeepSeek-R1, Claude with extended thinking). They're trained with
+reward signals that score intermediate reasoning steps, not just
+final answers.
+
+Process reward models (PRMs) score each step of a math proof,
+each line of code, each reasoning move. The model learns to think
+step-by-step because that's what gets rewarded at each step.
+
+The Dweck parallel (talking point, not a demo):
+- Outcome reward = fixed-mindset feedback: "You got an F."
+  The student doesn't know what to fix. Develops superstitions.
+  Avoids hard problems because failure is identity-level.
+- Process reward = growth-mindset feedback: "Your thesis was strong
+  but paragraph 3's evidence didn't support it." The student knows
+  exactly what to improve. Can take risks because a wrong step
+  gets local correction, not blanket punishment.
+
+Dweck found this in classrooms; DeepSeek exploited it in GPU
+clusters. Same efficiency gap: process feedback is higher-bandwidth
+signal per training example.
+
+Connection to Pillar 3 (evaluation): when you build golden datasets
+for agent regression testing, scoring each step (not just the final
+answer) catches failures that pass/fail misses. An agent that gets
+the right answer through flawed reasoning will eventually fail.
+Process evaluation catches it before it does.
+
+Q&A PREPARATION
+
+Q: "Why doesn't everyone use process reward?"
+A: It's expensive to define. For math and code, each step can be
+   verified automatically (run the code, check the proof). For
+   open-ended text (write a poem, draft a policy), defining what
+   makes each sentence "good" requires human judgment or a second
+   model (LLM-as-judge). The cost of creating the reward signal
+   has to be worth the faster convergence.
+
+Q: "Is this how Claude's extended thinking works?"
+A: The general approach is similar — the model is trained so that
+   producing reasoning steps before answering leads to reward.
+   Specific implementation details vary by provider.
+
+Q: "How does this connect to the DeepSeek cost disruption?"
+A: DeepSeek focused on domains where process reward is cheap to
+   produce (math, code). They got comparable model quality with
+   a fraction of the compute because each training step did more
+   work. The conventional wisdom was "more compute = better model."
+   DeepSeek showed "better feedback = comparable model, less
+   compute."
+
+COST
+$0.00 — no API calls, runs locally.
+
+DEPENDENCIES
+PyTorch. Uses the B02 pre-trained model as starting point.
+
+SCRIPT NEEDED
+Same scripts/rl_demo.py as B05 — the --reward flag selects
+outcome vs process. The --compare flag overlays both curves.

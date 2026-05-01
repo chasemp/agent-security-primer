@@ -1,0 +1,62 @@
+OUTCOME vs PROCESS REWARD — Same goal, different feedback quality
+
+Goal: "Write camp letters that mention making friends"
+Both start from the same pre-trained model. Same training steps.
+
+  OUTCOME REWARD                        PROCESS REWARD
+  (score the whole letter: yes/no)      (score each sentence: 0.0-1.0)
+
+  reward                                reward
+  1.0 │           · ·  ·   ··  · ·     1.0 │                    ████████
+      │        ·  ·   ··  ·  ··        │               ████████
+      │     · ·· · ·                    │          █████
+  0.5 │   ·· · ·                   ·    0.5 │      ████
+      │  · ·    ·        ·             │   ████
+      │ · ·  ·                          │  ███
+      │··                               │ ██
+  0.0 │·                                0.0 │█
+      └──────────────────────────       └──────────────────────────
+       0   50   100  150  200           0   50   100  150  200
+                steps                              steps
+
+       noisy, slow, plateaus ~0.6        smooth, fast, plateaus ~0.85
+
+
+  WHY THE DIFFERENCE?
+
+  Outcome (B05):                        Process (B06):
+  ┌────────────────────────────┐        ┌────────────────────────────┐
+  │ "Dear Mom, the food was    │        │ "Dear Mom, the food was    │
+  │  OK today. I played cards  │        │  OK today. I played cards  │
+  │  with Marcus. Love, Noah"  │        │  with Marcus. Love, Noah"  │
+  │                            │        │                            │
+  │ Score: 0.0 (no friend     │        │ Sentence 1: 0.5 (neutral)  │
+  │   words found)             │        │ Sentence 2: 0.8 (Marcus =  │
+  │                            │        │   social, "played with")   │
+  │ The model knows the WHOLE  │        │ Sentence 3: 0.5 (neutral)  │
+  │ letter failed, but not     │        │                            │
+  │ WHICH PART to fix.         │        │ The model knows sentence 2 │
+  │                            │        │ was good and should do MORE │
+  │ Like getting an F with     │        │ of that.                   │
+  │ no marked-up test.         │        │                            │
+  │                            │        │ Like getting the test back  │
+  │                            │        │ with each question graded. │
+  └────────────────────────────┘        └────────────────────────────┘
+
+
+  THE DWECK PARALLEL
+
+  Outcome reward = fixed-mindset feedback
+    "You failed."
+    → Student doesn't know what to fix
+    → Develops superstitions
+    → Avoids hard problems (failure = identity)
+
+  Process reward = growth-mindset feedback
+    "Your thesis was strong but paragraph 3's evidence was weak."
+    → Student knows exactly where to improve
+    → Can take risks (wrong step = local correction, not blanket F)
+    → Faster improvement per attempt
+
+  Same insight. Dweck found it in classrooms.
+  DeepSeek exploited it in GPU clusters.

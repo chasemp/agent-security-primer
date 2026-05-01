@@ -1,0 +1,135 @@
+KEY TAKEAWAY
+Outcome-only reward tells the model "you were wrong" but not where
+or why. The model needs many examples to statistically infer which
+patterns work, because each signal tells it almost nothing about
+what to fix.
+
+BACKGROUND
+B01-B04 covered how a model learns from data (pre-training). This
+demo introduces Reinforcement Learning (RL) — how you shape a
+trained model's behavior AFTER pre-training.
+
+Pre-training teaches the model to predict text. RL teaches it which
+predictions to prefer. The mechanism: define a reward signal, let
+the model generate output, score the output, adjust weights toward
+higher-scoring patterns.
+
+The reward signal is the feedback that tells the model "good" or
+"bad." This demo shows the simplest version: outcome-only reward.
+The model generates a complete camp letter, and we score only the
+final result. Did the letter mention making friends? Yes = reward.
+No = no reward.
+
+The problem: the model doesn't know WHICH part of the letter earned
+or lost the reward. Was it the greeting? The middle? The closing?
+With only pass/fail on the final output, the model has to guess.
+It needs hundreds of examples to statistically figure out which
+patterns tend to correlate with reward.
+
+This is like telling a student "you got an F" without marking which
+questions they got wrong. They can improve, but slowly, by trying
+different things and seeing which attempts get a passing grade.
+
+THE DEMO
+1. Show the pre-trained model generating generic camp letters
+2. Define a reward: "letter mentions making friends" = 1, else = 0
+3. Run RL training with outcome-only reward
+4. Show the loss curve — noisy, slow convergence
+5. Generate after training — output shifts toward friendship theme
+6. Compare convergence speed to B06 (process reward)
+
+PRESENTER FLOW
+
+Step 1: Generate baseline letters (pre-trained, no RL).
+  python scripts/rl_demo.py corpus/camp_letters.txt --generate --count 5
+
+Show 5 letters. They're generic camp letters — mix of all themes.
+No particular focus on friendship.
+
+Step 2: Define the reward function.
+  python scripts/rl_demo.py corpus/camp_letters.txt --show-reward outcome
+
+Display the reward function:
+  "Score 1.0 if the complete letter contains any of:
+   friend, friends, buddy, pal, together, we all, teammate"
+  "Score 0.0 otherwise."
+
+Point out: this is outcome-only. The model generates the entire
+letter, THEN we check. No intermediate feedback.
+
+Step 3: Run RL training with outcome reward.
+  python scripts/rl_demo.py corpus/camp_letters.txt --train --reward outcome --steps 200
+
+Show the reward curve: starts low (~0.2), slowly climbs. The curve
+is noisy — reward jumps around because the model is guessing which
+patterns help. After 200 steps, reward reaches maybe 0.5-0.6.
+
+Step 4: Generate after outcome RL.
+  python scripts/rl_demo.py corpus/camp_letters.txt --generate --count 5
+
+Letters now mention friends more often, but the improvement is
+uneven. Some letters shoehorn friendship mentions awkwardly.
+The model learned "include the word 'friend' somewhere" but
+not "write naturally about friendship."
+
+Step 5: Show the convergence curve.
+  python scripts/rl_demo.py corpus/camp_letters.txt --show-curve
+
+Display the reward over training steps. Point out: noisy, slow
+to plateau. The model needed many attempts because each attempt
+only told it "right" or "wrong," not "where" or "why."
+
+Save this curve for comparison in B06.
+
+WHY THIS MATTERS
+This is how early RLHF (Reinforcement Learning from Human
+Feedback) worked. Human raters scored complete model outputs on
+a 1-7 scale. The model got a number but no explanation.
+
+The problem scales: with complex tasks (write a security policy,
+diagnose a bug), outcome-only reward is even less informative.
+The model can't tell if it got the right answer for the wrong
+reasons or the wrong answer despite good reasoning.
+
+Connection to evaluation (Pillar 3): when we score agent outputs
+with only pass/fail (golden dataset, final-answer-only), we're
+giving the agent the same low-bandwidth feedback. A "passing"
+test might hide a flawed reasoning chain that got lucky.
+
+The Dweck parallel: outcome-only reward is fixed-mindset feedback.
+"You got an A" or "you failed." No signal about what to change.
+The learner develops superstitions about what works, because the
+feedback doesn't isolate the actual variable.
+
+Q&A PREPARATION
+
+Q: "Why not just tell the model what to fix?"
+A: That's process reward — B06. Here we're showing why outcome-only
+   is expensive: you need volume to compensate for imprecision.
+
+Q: "Isn't this how we evaluate people too?"
+A: Often, yes. Annual reviews that say "meets expectations" without
+   specifics are outcome-only. Research (Dweck, Stanford) shows
+   process feedback produces faster improvement in humans too.
+
+Q: "How does this relate to RLHF?"
+A: RLHF typically trains a separate "reward model" from human
+   preferences (A is better than B), then uses that reward model
+   to score outputs. The reward model itself is outcome-based —
+   it scores the complete output, not individual steps.
+
+COST
+$0.00 — no API calls, runs locally.
+
+DEPENDENCIES
+PyTorch. Uses the B02 pre-trained model as starting point.
+
+SCRIPT NEEDED
+scripts/rl_demo.py — simplified RL training loop. Needs:
+  --train               Run RL training
+  --reward outcome|process  Which reward signal to use
+  --steps N             Training steps
+  --generate            Generate from current model
+  --count N             Number of letters to generate
+  --show-reward TYPE    Display the reward function
+  --show-curve          Display reward-over-time curve

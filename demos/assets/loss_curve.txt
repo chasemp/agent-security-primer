@@ -1,0 +1,40 @@
+THE PENALTY SCORE (Cross-Entropy Loss)
+
+How wrong is the model's guess? High = very wrong. Low = almost right.
+Watch it drop as the model learns patterns from the camp letters.
+
+loss
+ 4.2 │ ████████████████████████████████████████████   ← random guessing
+     │
+ 3.5 │ ██████████████████████████████████               letters start
+     │                                                   to form
+ 2.8 │ ████████████████████████████
+     │                                                   "Dear" and
+ 2.1 │ ██████████████████████                            "Love," appear
+     │
+ 1.5 │ ██████████████████                                words are
+     │                                                   mostly right
+ 1.0 │ ████████████
+     │                                                   sentences
+ 0.7 │ █████████                                         take shape
+     │
+ 0.5 │ ███████  ← plateau: learned what it can learn
+     │            at this scale
+     └───────────────────────────────────────────────
+       10     50    100    200    500    1000  epochs
+
+
+What the output looks like at each stage:
+
+  loss ~4.0   "kq&mBxU)zLn#w..."           pure noise
+  loss ~3.0   "th e  an d I  m"            spaces, common letters
+  loss ~2.0   "Dear Mo" "the cam" "Love,"  fragments
+  loss ~1.0   "Dear Mom and Dad, I went    recognizable structure
+               to the lake and the food
+               was fun. Love, Sophie"
+  loss ~0.5   camp-letter-shaped text       coherent but muddled
+
+The model never reaches 0.0. It can't perfectly predict every next
+character because language has genuine uncertainty — after "Dear"
+the next word could be "Mom" OR "Dad" OR "Mom and Dad." That
+uncertainty is irreducible.

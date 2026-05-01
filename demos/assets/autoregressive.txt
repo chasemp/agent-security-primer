@@ -1,0 +1,64 @@
+AUTOREGRESSIVE GENERATION — One token at a time
+
+The model does a FULL PASS through the entire network for every
+single character it generates. Then it adds that character to the
+input and does another full pass.
+
+Step 1:  Input: [D]
+         Full pass through all layers → predict next → "e"
+
+Step 2:  Input: [D, e]
+         Full pass through all layers → predict next → "a"
+
+Step 3:  Input: [D, e, a]
+         Full pass through all layers → predict next → "r"
+
+Step 4:  Input: [D, e, a, r]
+         Full pass through all layers → predict next → " "
+
+Step 5:  Input: [D, e, a, r, " "]
+         Full pass through all layers → predict next → "M"
+
+  ...
+
+Step 15: Input: [D, e, a, r, " ", M, o, m, " ", I, " ", m, i, s, s]
+         Full pass through all layers → predict next → " "
+
+  ...
+
+Step 300: Input: [D, e, a, r, " ", M, o, m, ... 300 characters ...]
+          Full pass through all layers → predict next → "e"
+          Output so far: "Dear Mom and Dad, I went to the lak e..."
+
+
+That paragraph took 300 full passes through the network.
+This is why LLMs need so much compute.
+
+  ┌─────────────────────────────────────────────────────┐
+  │ A 500-word essay at GPT-4 scale:                    │
+  │                                                     │
+  │   ~700 tokens                                       │
+  │   × 96 transformer layers per pass                  │
+  │   × billions of multiply-accumulate operations      │
+  │   = 700 full-depth passes through the network       │
+  │                                                     │
+  │ This is why a GPU cluster costs millions per year.   │
+  └─────────────────────────────────────────────────────┘
+
+THE SHORTCUT: KV CACHING
+
+In practice, we don't redo ALL the math every step.
+We cache the Key and Value vectors for tokens we've already processed.
+Only the NEW token needs fresh computation.
+
+  Step 1:  Compute K,V for [D]              → cache
+  Step 2:  Compute K,V for [e] only         → add to cache
+  Step 3:  Compute K,V for [a] only         → add to cache
+  ...
+  Step 300: Compute K,V for the 300th char  → add to cache
+            Attend over ALL 300 cached K,V vectors
+            But only computed NEW math for 1 character
+
+This is why the "first token" is slow (processing the entire prompt)
+but subsequent tokens are fast (only processing the new one).
+The cache trades memory for compute.

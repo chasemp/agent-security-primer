@@ -1,0 +1,52 @@
+TEMPERATURE — Same model, different sampling
+
+The model always outputs the same probability distribution.
+Temperature changes how we PICK from it.
+
+After "Dear Mo", the model predicts:
+
+  temp = 0.1 (certain)       temp = 1.0 (balanced)      temp = 2.0 (chaotic)
+  ┌──────────────────┐       ┌──────────────────┐       ┌──────────────────┐
+  │ m  ██████████████│ 99%   │ m  ██████████    │ 72%   │ m  █████         │ 38%
+  │ n  ░             │  1%   │ n  ████          │ 15%   │ n  ████          │ 18%
+  │ r  ·             │  0%   │ r  ██            │  6%   │ r  ███           │ 14%
+  │ s  ·             │  0%   │ s  █             │  3%   │ s  ██            │ 10%
+  │ t  ·             │  0%   │ t  ░             │  2%   │ t  ██            │  8%
+  │ d  ·             │  0%   │ d  ░             │  1%   │ d  █             │  5%
+  │ ...              │  0%   │ ...              │  1%   │ ...              │  7%
+  └──────────────────┘       └──────────────────┘       └──────────────────┘
+        ▼                          ▼                          ▼
+  always picks "m"           usually "m"                 could be anything
+  repetitive, safe           varied, coherent            creative, unstable
+
+
+  The math: logits / temperature → softmax → sample
+
+  Low temp:  divides by small number → big scores get BIGGER → sharpens
+  High temp: divides by large number → all scores get SIMILAR → flattens
+
+
+  What the output looks like:
+
+  temp 0.1  "Dear Mom and Dad, I miss you and I miss you and I miss you"
+            (picks the most likely token every time — loops)
+
+  temp 0.7  "Dear Mom and Dad, I went kayaking today and the water was
+             so clear you could see fish underneath"
+            (varied but coherent — the sweet spot)
+
+  temp 1.0  "Dear Mom and Dad, I miss the cabin food but Kai and me
+             went to the lake and it was pretty good actually"
+            (more surprising choices, still mostly makes sense)
+
+  temp 1.5  "Dear Mom cabin went the dark food swimming and I Love,
+             really was but miss Kai fun the"
+            (structure breaking down — too many low-probability picks)
+
+  temp 2.5  "kD qMa  nreo iLhd  vtms"
+            (approaching random — distribution so flat it's noise)
+
+  Note: Claude's API caps temperature at 1.0. OpenAI/Gemini allow up
+  to 2.0. Our character model has no cap — any positive float works.
+  Values above 1.0 are shown here to illustrate the math, not because
+  every API supports them.

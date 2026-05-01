@@ -1,0 +1,118 @@
+KEY TAKEAWAY
+The model is deterministic. It always produces the same probability
+distribution for the next character. Temperature changes how we
+SAMPLE from that distribution — it's a post-processing knob, not
+a property of the model itself.
+
+BACKGROUND
+After B02, the audience has watched a model learn. They've seen it
+generate camp-letter-shaped text. Now show them the sampling layer.
+
+The model outputs a probability distribution: given "Dear Mo",
+the next character might be "m" at 85%, "n" at 8%, "r" at 3%, etc.
+Temperature controls how we pick from those probabilities.
+
+Low temperature (0.1): the high probabilities get "sharpened."
+"m" at 85% becomes effectively 100%. The model always picks the
+most likely character. Output is repetitive but "safe."
+
+Temperature 1.0: the distribution stays as the model calculated it.
+You get variety — sometimes "m", occasionally "n."
+
+High temperature (1.5+): the distribution gets "flattened." Lower-
+probability options become more likely. Output gets creative but
+unstable. Eventually, gibberish.
+
+This is the same concept as Demo 07 in Pillar 2, but here the
+audience sees it on a model they built. They understand WHY
+temperature works, not just THAT it works.
+
+THE DEMO
+1. Generate from the same trained model at temperature 0 (greedy)
+2. Generate at temperature 0.5 (conservative)
+3. Generate at temperature 1.0 (balanced)
+4. Generate at temperature 1.5 (creative/unstable)
+5. Side-by-side: same model, same weights, different sampling
+
+PRESENTER FLOW
+
+Prerequisite: B02's model must be trained (checkpoint exists).
+
+Step 1: Temperature 0 (greedy — always pick highest probability).
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --chars 200 --temperature 0.01 --seed 42
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --chars 200 --temperature 0.01 --seed 99
+
+Point out: both outputs are nearly identical regardless of seed.
+The model always picks the same next character. Repetitive,
+possibly looping. "Dear Mom and Dad, I miss you and I miss you
+and I miss you and I miss..."
+
+Step 2: Temperature 0.5 (conservative).
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --chars 200 --temperature 0.5
+
+More varied. Still coherent, fewer loops. The model occasionally
+picks the second-most-likely character, creating variety.
+
+Step 3: Temperature 1.0 (as trained).
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --chars 200 --temperature 1.0
+
+This is the "natural" distribution. The output the model was
+trained to produce. Mix of common and occasional rare choices.
+
+Step 4: Temperature 1.5 (creative/chaotic).
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --chars 200 --temperature 1.5
+
+Starting to break down. Rare characters appear more often. Spelling
+degrades. Structure loosens. The model is "guessing" more.
+
+Step 5: Temperature 2.0+ (noise).
+  python scripts/charmodel.py corpus/camp_letters.txt --generate --chars 200 --temperature 2.5
+
+Near-random. The probability distribution is so flat that even
+unlikely characters get selected. Back to noise — but structured
+noise, not the pure random of an untrained model.
+
+WHY THIS MATTERS
+Temperature is the first place where human judgment enters the
+generation process. The model provides the math; the operator
+decides how to sample from it.
+
+In Pillar 2 (Demo 07), we show temperature on Claude's API. The
+audience will already understand the mechanism from this demo.
+They'll know that "creative" output isn't smarter — it's less
+constrained sampling from the same distribution.
+
+Security implication: temperature affects reproducibility. At
+temperature 0, the same prompt always produces the same output.
+At temperature 1.0, the same prompt can produce different outputs.
+This matters for testing, auditing, and regression.
+
+Q&A PREPARATION
+
+Q: "Is higher temperature 'more creative'?"
+A: It's more random. Creativity is a human interpretation of
+   unexpected but coherent combinations. High temperature produces
+   unexpected combinations, but they're often incoherent. There's
+   a sweet spot — usually 0.7-1.0 — where the output is varied
+   enough to be interesting without falling apart.
+
+Q: "Where does temperature happen in the code?"
+A: After the model outputs logits (raw scores), before we pick the
+   token. It's a division: logits / temperature. Lower temperature
+   makes high scores relatively higher. Higher temperature makes
+   all scores more similar. Then we sample from the adjusted
+   distribution.
+
+Q: "Do real models use temperature?"
+A: Yes, every major API exposes a temperature parameter. The range
+   varies: Claude caps at 0.0-1.0. OpenAI and Gemini allow 0.0-2.0.
+   Our character model has no cap — any positive float works — which
+   is why we can demo values above 1.0 here to show what extreme
+   flattening looks like. Demo 07 in Pillar 2 uses Claude's API,
+   so it stays within 0.0-1.0.
+
+COST
+$0.00 — no API calls, runs locally.
+
+DEPENDENCIES
+PyTorch. Uses B02's trained checkpoint.
