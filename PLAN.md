@@ -331,7 +331,7 @@ are new scripts or extensions of existing ones.
 
 ## Test Modes
 
-- `pytest` — fast structural tests, no API calls (528 tests)
+- `pytest` — fast structural tests, no API calls (657 tests)
 - `pytest -m live` — pre-flight behavioral tests, real API (~$0.08)
 
 ## Audience Variants
