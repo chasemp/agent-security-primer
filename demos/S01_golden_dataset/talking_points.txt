@@ -1,0 +1,146 @@
+KEY TAKEAWAY
+A golden dataset is the test suite for a non-deterministic system. You
+curate known-good input/output pairs once, then any prompt change or
+model swap can be measured against them. Same dataset, different prompt
+-> different score. That difference IS the regression signal.
+
+BACKGROUND
+Unit tests work because the function is deterministic: same input, same
+output, every time. LLMs break that assumption. You can't write a unit
+test that says "this prompt returns 'homesick' for this input" because
+the model might say "Homesick.", "homesick", "the mood is homesick", or
+sometimes flip to "sad" entirely.
+
+The golden dataset is how you regain testability. You curate 8-50 pairs
+of (input, expected_label) once, treat them as the contract, and score
+any future prompt or model against them. The scoring is fuzzy
+(case-insensitive word match here), but the dataset is fixed. When your
+accuracy drops from 87% to 62% after a prompt edit, that's a regression
+you can act on — same kind of signal as a failing unit test, just
+expressed as a percentage instead of pass/fail.
+
+This demo uses 8 letters from the camp_letters corpus (one per mood
+category). Two prompt versions: v1 with rich category descriptions,
+v2 stripped down to a bare list of labels. Same dataset, two scores.
+
+WHY JSONL?
+The dataset format is JSONL — one JSON object per line — because:
+  1. Each line is an independent test case. Add a row, remove a row,
+     edit a row: the rest of the file is unchanged. No merge conflicts.
+  2. wc -l tells you how many test cases you have. head -3 shows you
+     the first three. Standard text tools work, no parser needed.
+  3. Stream-friendly. eval.py reads line-by-line, so a 10,000-row
+     dataset doesn't change the code shape.
+  4. Industry standard for ML evals (OpenAI fine-tuning, HuggingFace
+     datasets, pydantic-evals all consume JSONL).
+
+The format is simple but the contents are easy to make opaque. Treat
+the file as plain text and inspect it before trusting it.
+
+THE DEMO
+The audience sees:
+  1. The dataset is just text — show it with cat, head, jq
+  2. Run eval.py against v1 prompt — accuracy is high (likely 8/8)
+  3. Run eval.py against v2 prompt — accuracy drops (likely 5-7/8,
+     v2 confuses adjacent categories like arrival vs homesick)
+  4. The diff between the two scores IS the regression signal
+
+PRESENTER FLOW
+
+Step 1 — Demystify the dataset (no API calls).
+
+  # Show the file is just text, one entry per line
+  wc -l demos/S01_golden_dataset/golden.jsonl
+
+  # Pretty-print the first entry
+  head -1 demos/S01_golden_dataset/golden.jsonl | jq
+
+  # Show all the expected labels (sanity check we cover all 8)
+  jq -r .expected demos/S01_golden_dataset/golden.jsonl | sort -u
+
+  # Show just the inputs as plain text (drop the JSON wrapper)
+  jq -r .input demos/S01_golden_dataset/golden.jsonl | head -20
+
+  # Filter to one category
+  jq 'select(.expected == "homesick")' \
+    demos/S01_golden_dataset/golden.jsonl
+
+Step 2 — Show the two prompt versions.
+
+  cat demos/S01_golden_dataset/system_prompt_v1.txt
+  cat demos/S01_golden_dataset/system_prompt_v2.txt
+
+  # Note: v1 is ~10x longer because it describes each category.
+  # v2 just lists the labels. Same vocabulary, different specificity.
+
+Step 3 — Run the eval against v1 (the good prompt).
+
+  python scripts/eval.py demos/S01_golden_dataset/golden.jsonl \
+    --prompt demos/S01_golden_dataset/system_prompt_v1.txt
+
+  # Expect: 7-8 / 8 correct. Per-category breakdown shows where it
+  # struggles (usually the edge cases — letters with mixed signals).
+
+Step 4 — Run the eval against v2 (the degraded prompt).
+
+  python scripts/eval.py demos/S01_golden_dataset/golden.jsonl \
+    --prompt demos/S01_golden_dataset/system_prompt_v2.txt
+
+  # Expect: 4-7 / 8. v2 tends to confuse arrival vs homesick (both
+  # are about settling in) and adventure vs growth (both are about
+  # doing hard things).
+
+Point out: v2 isn't broken. It's just less specific. The model is
+guessing more because it has fewer hooks to anchor on. Without a
+golden dataset, this difference is invisible — both prompts produce
+"reasonable looking" output. The dataset is what makes "reasonable"
+measurable.
+
+WHY THIS MATTERS
+You can't prevent regressions you can't measure. Most LLM systems
+have no eval harness — when someone tweaks a prompt, the only
+verification is "I ran it on three examples and it looked fine."
+That's not testing. That's wishful thinking.
+
+A golden dataset is the smallest viable eval harness. 8-50 entries
+take a couple hours to curate. Once they exist, every prompt change
+is testable. Every model swap is testable. The accuracy delta IS
+the regression signal — same role as a failing unit test in a
+deterministic system.
+
+This demo also previews S02 (process vs outcome eval) and S03
+(consistency voting). The golden dataset is the substrate; those
+demos add richer scoring on top of it.
+
+Q&A PREPARATION
+
+Q: 8 entries seems small. Won't accuracy be too noisy?
+A: For a demo, 8 makes the regression visible. For production, you
+   want 50-200. Diminishing returns past that. The point is to have
+   *enough* signal to detect prompt-level changes, not to validate
+   every edge case.
+
+Q: How do you curate the expected labels?
+A: Hand-label them once with a domain expert. The dataset is the
+   contract — getting it right is worth the upfront cost. For our
+   8 letters, the labels match the corpus categories that the
+   letters were authored under, so curation was free.
+
+Q: What if the expected label is wrong?
+A: Then your eval is broken. Curate carefully. Review periodically.
+   When the model disagrees with the label, ask "is the model wrong
+   or is our label wrong?" before assuming regression.
+
+Q: Why temperature=0?
+A: Determinism for the eval. We want the dataset to measure prompt
+   quality, not sampling noise. S03 (consistency voting) deliberately
+   uses high temperature to measure noise — different question.
+
+Q: Can the model see the expected label?
+A: No. The model only sees the system prompt + the input letter.
+   The expected label exists only in the JSONL and the scoring code.
+
+COST
+~16 API calls (8 letters x 2 prompt versions) at haiku pricing.
+Each call is ~150 input tokens + ~5 output tokens. Total: ~$0.005
+per full demo run. Cheap enough to run live during a presentation.

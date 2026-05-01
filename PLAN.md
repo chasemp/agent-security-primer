@@ -221,7 +221,7 @@ show where prediction IS reasoning — and how to verify it stays
 that way. Each demo has two faces: what the model does well, and
 the technique that makes it reliable.
 
-**Status**: 3 demos built (18-20), 7 planned.
+**Status**: 4 demos built (18-20, S01), 6 planned.
 
 ### Existing Demos
 
@@ -230,6 +230,7 @@ the technique that makes it reliable.
 | 18 | Few-Shot Pattern Learning | Examples shape predictions | ask_claude.py (4 variants) |
 | 19 | Structured Extraction | Schema narrows the prediction menu | ask_claude.py --schema (4 variants) |
 | 20 | Semantic Classification | Reads meaning, not keywords | ask_claude.py (4 variants) |
+| S01 | Golden Dataset Baseline | Curate known-good pairs, score prompt versions | eval.py + golden.jsonl |
 
 ### Planned Demos
 
@@ -238,7 +239,6 @@ the technique that makes it reliable.
 | 25 | Domain Translation | Persona/audience framing steers predictions | Planned |
 | 26 | Rubric-Based Evaluation | Explicit criteria shape evaluation patterns | Planned |
 | 27 | Diagnosis from Evidence | Full context enables better reasoning | Planned |
-| S01 | Golden Dataset Baseline | Curate known-good outputs, detect regression | Planned |
 | S02 | Process vs Outcome Eval | Score steps vs final answer — catch what pass/fail misses | Planned |
 | S03 | Consistency Voting | Run 3x, measure agreement, detect hallucination | Planned |
 | S04 | Structured Observability | model_dump() makes every decision inspectable | Planned |
@@ -323,15 +323,12 @@ to the State Ledger pattern and the Logfire/OTel stack.
 | `count_tokens.py` | Pre-flight token count across all 3 models |
 | `validate.py` | Check JSON fields against known-good values |
 | `run_tool.py` | Call tool functions directly (no API) |
-
-Pillar 1 may need a new script for training the tiny model.
-Pillar 3 eval demos (S01-S04) may need an `eval.py` script
-for pydantic-evals integration. Decision needed on whether these
-are new scripts or extensions of existing ones.
+| `eval.py` | Score a system prompt against a JSONL golden dataset (S01-S04) |
+| `bigram.py`, `charmodel.py`, `attention_viz.py`, `rl_demo.py` | Pillar 1 model-building scripts |
 
 ## Test Modes
 
-- `pytest` — fast structural tests, no API calls (657 tests)
+- `pytest` — fast structural tests, no API calls (693 tests)
 - `pytest -m live` — pre-flight behavioral tests, real API (~$0.08)
 
 ## Audience Variants
