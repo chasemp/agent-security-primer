@@ -70,10 +70,12 @@ class TestGoldenDataset:
         assert expected_values == EXPECTED_CATEGORIES
 
     def test_inputs_are_letter_shaped(self, entries: list[dict]) -> None:
-        # Every camp letter starts with "Dear" and ends with a sign-off
+        # Every camp letter opens with "Dear" and has a sign-off
+        sign_offs = ("Love,", "Miss you,", "From,", "Yours,")
         for e in entries:
             assert e["input"].startswith("Dear")
-            assert "Love," in e["input"]
+            assert any(s in e["input"] for s in sign_offs), \
+                f"missing sign-off in: {e['input'][:60]}"
 
 
 # ---------------------------------------------------------------------------
@@ -92,10 +94,14 @@ class TestPromptVersions:
         for cat in EXPECTED_CATEGORIES:
             assert cat in v1
 
-    def test_v2_lists_categories_without_descriptions(self) -> None:
+    def test_v2_drops_the_label_vocabulary(self) -> None:
+        # v2 represents a real-world regression: someone "trimmed" the
+        # prompt and lost the constrained label list. The model now
+        # invents its own mood vocabulary.
         v2 = (DEMO_DIR / "system_prompt_v2.txt").read_text().lower()
+        # No category labels should appear in v2
         for cat in EXPECTED_CATEGORIES:
-            assert cat in v2
+            assert cat not in v2, f"v2 should not contain label '{cat}'"
 
 
 # ---------------------------------------------------------------------------

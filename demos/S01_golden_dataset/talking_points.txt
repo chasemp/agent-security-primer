@@ -9,19 +9,20 @@ Unit tests work because the function is deterministic: same input, same
 output, every time. LLMs break that assumption. You can't write a unit
 test that says "this prompt returns 'homesick' for this input" because
 the model might say "Homesick.", "homesick", "the mood is homesick", or
-sometimes flip to "sad" entirely.
+flip to "Reflective" entirely if the prompt loses its label vocabulary.
 
 The golden dataset is how you regain testability. You curate 8-50 pairs
 of (input, expected_label) once, treat them as the contract, and score
 any future prompt or model against them. The scoring is fuzzy
-(case-insensitive word match here), but the dataset is fixed. When your
-accuracy drops from 87% to 62% after a prompt edit, that's a regression
-you can act on — same kind of signal as a failing unit test, just
-expressed as a percentage instead of pass/fail.
+(case-insensitive whole-word match here), but the dataset is fixed.
+When your accuracy drops from 75% to 12% after a prompt edit, that's a
+regression you can act on — same kind of signal as a failing unit test
+in a deterministic system, just expressed as a percentage.
 
 This demo uses 8 letters from the camp_letters corpus (one per mood
-category). Two prompt versions: v1 with rich category descriptions,
-v2 stripped down to a bare list of labels. Same dataset, two scores.
+category), deliberately mixing prototypical cases with multi-signal
+ones. Two prompt versions: v1 with rich category descriptions, v2
+stripped of the label vocabulary entirely.
 
 WHY JSONL?
 The dataset format is JSONL — one JSON object per line — because:
@@ -40,10 +41,18 @@ the file as plain text and inspect it before trusting it.
 THE DEMO
 The audience sees:
   1. The dataset is just text — show it with cat, head, jq
-  2. Run eval.py against v1 prompt — accuracy is high (likely 8/8)
-  3. Run eval.py against v2 prompt — accuracy drops (likely 5-7/8,
-     v2 confuses adjacent categories like arrival vs homesick)
+  2. Run eval.py against v1 (descriptions): ~6/8 correct (75%)
+  3. Run eval.py against v2 (no label vocabulary): ~1/8 correct (12.5%)
   4. The diff between the two scores IS the regression signal
+
+The two persistent failures on v1 are themselves pedagogical:
+  - Letter 3 (campfire cooking) — labeled "adventure" but reads more
+    like "food". Both prompts pick "food".
+  - Letter 8 (writing in journals) — labeled "last_days" but reads
+    more like "friendship". Both prompts pick "friendship".
+
+When the model and the dataset disagree consistently, that's a
+prompt for a human to ask: is the model wrong, or is our label wrong?
 
 PRESENTER FLOW
 
@@ -70,31 +79,35 @@ Step 2 — Show the two prompt versions.
   cat demos/S01_golden_dataset/system_prompt_v1.txt
   cat demos/S01_golden_dataset/system_prompt_v2.txt
 
-  # Note: v1 is ~10x longer because it describes each category.
-  # v2 just lists the labels. Same vocabulary, different specificity.
+  # v1 names all 8 categories with descriptions (~700 chars).
+  # v2 is one sentence: "Classify the dominant mood. One word."
+  # Same task, drastically different specificity.
 
 Step 3 — Run the eval against v1 (the good prompt).
 
   python scripts/eval.py demos/S01_golden_dataset/golden.jsonl \
     --prompt demos/S01_golden_dataset/system_prompt_v1.txt
 
-  # Expect: 7-8 / 8 correct. Per-category breakdown shows where it
-  # struggles (usually the edge cases — letters with mixed signals).
+  # Expect: 6/8 correct (75%). Look at the per-category breakdown.
+  # The two failures are letters where the dataset label and the
+  # surface lexical content disagree (campfire cooking, journaling).
 
 Step 4 — Run the eval against v2 (the degraded prompt).
 
   python scripts/eval.py demos/S01_golden_dataset/golden.jsonl \
     --prompt demos/S01_golden_dataset/system_prompt_v2.txt
 
-  # Expect: 4-7 / 8. v2 tends to confuse arrival vs homesick (both
-  # are about settling in) and adventure vs growth (both are about
-  # doing hard things).
+  # Expect: 1/8 correct (12.5%). Note WHAT v2 returns: Excited,
+  # Joyful, Lighthearted, Reflective, Nostalgic. These are perfectly
+  # reasonable mood words — they just don't belong to our rubric's
+  # vocabulary. The model can't pick from a list it was never given.
 
-Point out: v2 isn't broken. It's just less specific. The model is
-guessing more because it has fewer hooks to anchor on. Without a
-golden dataset, this difference is invisible — both prompts produce
-"reasonable looking" output. The dataset is what makes "reasonable"
-measurable.
+Point out: v2 isn't broken in some abstract way. It's missing the
+label list. Without it, the model defaults to its own vocabulary, and
+our scorer (which expects "homesick", "adventure", etc.) misses every
+output that uses synonyms. Without a golden dataset, this regression
+is invisible — both prompts produce "reasonable looking" output. The
+dataset is what makes "reasonable" measurable.
 
 WHY THIS MATTERS
 You can't prevent regressions you can't measure. Most LLM systems
@@ -105,8 +118,7 @@ That's not testing. That's wishful thinking.
 A golden dataset is the smallest viable eval harness. 8-50 entries
 take a couple hours to curate. Once they exist, every prompt change
 is testable. Every model swap is testable. The accuracy delta IS
-the regression signal — same role as a failing unit test in a
-deterministic system.
+the regression signal.
 
 This demo also previews S02 (process vs outcome eval) and S03
 (consistency voting). The golden dataset is the substrate; those
@@ -117,19 +129,14 @@ Q&A PREPARATION
 Q: 8 entries seems small. Won't accuracy be too noisy?
 A: For a demo, 8 makes the regression visible. For production, you
    want 50-200. Diminishing returns past that. The point is to have
-   *enough* signal to detect prompt-level changes, not to validate
-   every edge case.
+   *enough* signal to detect prompt-level changes.
 
-Q: How do you curate the expected labels?
-A: Hand-label them once with a domain expert. The dataset is the
-   contract — getting it right is worth the upfront cost. For our
-   8 letters, the labels match the corpus categories that the
-   letters were authored under, so curation was free.
-
-Q: What if the expected label is wrong?
-A: Then your eval is broken. Curate carefully. Review periodically.
-   When the model disagrees with the label, ask "is the model wrong
-   or is our label wrong?" before assuming regression.
+Q: Why does v1 only get 6/8 on a curated dataset?
+A: The two failures are genuine label-vs-content disagreements. The
+   "adventure" letter is entirely about food. The "last_days" letter
+   reads like a friendship moment. The corpus assigned categories by
+   directory; the content sometimes drifts. This is real golden-dataset
+   work: when the model consistently disagrees, audit the labels.
 
 Q: Why temperature=0?
 A: Determinism for the eval. We want the dataset to measure prompt
@@ -141,6 +148,6 @@ A: No. The model only sees the system prompt + the input letter.
    The expected label exists only in the JSONL and the scoring code.
 
 COST
-~16 API calls (8 letters x 2 prompt versions) at haiku pricing.
-Each call is ~150 input tokens + ~5 output tokens. Total: ~$0.005
+~16 API calls (8 letters x 2 prompt versions) at haiku-4-5 pricing.
+Each call is ~150 input tokens + ~5 output tokens. Total: ~$0.004
 per full demo run. Cheap enough to run live during a presentation.

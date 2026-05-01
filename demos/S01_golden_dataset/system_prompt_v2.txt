@@ -1,5 +1,1 @@
-You are a mood classifier. Read the letter and respond with one mood label.
-
-Possible moods: arrival, homesick, adventure, friendship, food, rainy_day, growth, last_days.
-
-Respond with one word.
+Classify the dominant mood of this letter. Respond with one word.
