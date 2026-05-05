@@ -1,8 +1,10 @@
 KEY TAKEAWAY
-A golden dataset is the test suite for a non-deterministic system. You
-curate known-good input/output pairs once, then any prompt change or
-model swap can be measured against them. Same dataset, different prompt
--> different score. That difference IS the regression signal.
+A golden dataset is the test suite for a non-deterministic system.
+Curate (input, expected_label) pairs once and any prompt change or
+model swap can be measured against them. The dataset gives you two
+signals: prompt regressions become numbers (75% -> 12% is a hard
+delta), and label drift becomes visible (when the model consistently
+disagrees with a label, audit the label, not the model).
 
 BACKGROUND
 Unit tests work because the function is deterministic: same input, same
@@ -25,34 +27,35 @@ ones. Two prompt versions: v1 with rich category descriptions, v2
 stripped of the label vocabulary entirely.
 
 WHY JSONL?
-The dataset format is JSONL — one JSON object per line — because:
-  1. Each line is an independent test case. Add a row, remove a row,
-     edit a row: the rest of the file is unchanged. No merge conflicts.
-  2. wc -l tells you how many test cases you have. head -3 shows you
-     the first three. Standard text tools work, no parser needed.
-  3. Stream-friendly. eval.py reads line-by-line, so a 10,000-row
-     dataset doesn't change the code shape.
-  4. Industry standard for ML evals (OpenAI fine-tuning, HuggingFace
-     datasets, pydantic-evals all consume JSONL).
+One JSON object per line. Each line is an independent test case, so
+edits don't ripple. wc -l counts test cases, head -3 shows the first
+three, jq slices the rest — no custom parser needed. Stream-friendly
+(eval.py reads line-by-line). And it's the industry standard for ML
+evals (OpenAI fine-tuning, HuggingFace datasets, pydantic-evals all
+consume JSONL).
 
 The format is simple but the contents are easy to make opaque. Treat
 the file as plain text and inspect it before trusting it.
 
 THE DEMO
-The audience sees:
-  1. The dataset is just text — show it with cat, head, jq
-  2. Run eval.py against v1 (descriptions): ~6/8 correct (75%)
-  3. Run eval.py against v2 (no label vocabulary): ~1/8 correct (12.5%)
-  4. The diff between the two scores IS the regression signal
+The audience sees two payoffs from the same eval run:
 
-The two persistent failures on v1 are themselves pedagogical:
-  - Letter 3 (campfire cooking) — labeled "adventure" but reads more
-    like "food". Both prompts pick "food".
-  - Letter 8 (writing in journals) — labeled "last_days" but reads
-    more like "friendship". Both prompts pick "friendship".
+PAYOFF 1 — Prompt regression (v1 vs v2).
+  v1 (descriptions, full vocabulary): 6/8 correct (75%)
+  v2 (no label vocabulary):           1/8 correct (12.5%)
+  Same dataset, different score. The delta IS the regression signal.
 
-When the model and the dataset disagree consistently, that's a
-prompt for a human to ask: is the model wrong, or is our label wrong?
+PAYOFF 2 — Label drift (the v1 failures).
+  Both prompts persistently miss the same two letters:
+    Letter 3 — labeled "adventure" but reads as "food" (kid talks
+               only about campfire cooking)
+    Letter 8 — labeled "last_days" but reads as "friendship" (kid
+               talks only about journal-trading and a cabin spider)
+  Two prompts agreeing against the dataset means the dataset is the
+  thing under suspicion, not the prompt. This is a feature, not a bug:
+  golden datasets surface label drift the same way they surface prompt
+  regressions. Audit the label, then either fix it or accept the
+  ambiguity as a known edge case.
 
 PRESENTER FLOW
 
@@ -113,16 +116,12 @@ WHY THIS MATTERS
 You can't prevent regressions you can't measure. Most LLM systems
 have no eval harness — when someone tweaks a prompt, the only
 verification is "I ran it on three examples and it looked fine."
-That's not testing. That's wishful thinking.
+That's wishful thinking.
 
-A golden dataset is the smallest viable eval harness. 8-50 entries
-take a couple hours to curate. Once they exist, every prompt change
-is testable. Every model swap is testable. The accuracy delta IS
-the regression signal.
-
-This demo also previews S02 (process vs outcome eval) and S03
-(consistency voting). The golden dataset is the substrate; those
-demos add richer scoring on top of it.
+A golden dataset is the smallest viable eval harness: 8-50 entries,
+a couple hours to curate, then every prompt change and model swap is
+testable. It's also the substrate for S02 (process vs outcome eval)
+and S03 (consistency voting) — they add richer scoring on top.
 
 Q&A PREPARATION
 
@@ -132,11 +131,12 @@ A: For a demo, 8 makes the regression visible. For production, you
    *enough* signal to detect prompt-level changes.
 
 Q: Why does v1 only get 6/8 on a curated dataset?
-A: The two failures are genuine label-vs-content disagreements. The
-   "adventure" letter is entirely about food. The "last_days" letter
-   reads like a friendship moment. The corpus assigned categories by
-   directory; the content sometimes drifts. This is real golden-dataset
-   work: when the model consistently disagrees, audit the labels.
+A: That's payoff 2. Both prompts agree the "adventure" letter is
+   really about food and the "last_days" letter is really about
+   friendship. When two independent prompts agree against the
+   dataset, the label is suspect, not the prompt. In production
+   golden-dataset work, this is how you discover that 5% of your
+   labels are wrong without rereading every entry by hand.
 
 Q: Why temperature=0?
 A: Determinism for the eval. We want the dataset to measure prompt
