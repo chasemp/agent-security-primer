@@ -1,4 +1,4 @@
-DEMO 10: CREDENTIAL ISOLATION — Secrets Never Enter the Context
+DEMO 14: CREDENTIAL ISOLATION — Secrets Never Enter the Context
 
 KEY TAKEAWAY
 The credential lives in your code. It travels through your code.
@@ -6,15 +6,15 @@ It never becomes a token in the model's context. The model gets
 the capability (query data) without the secret (connection string).
 
 THE FIX
-Compare Demo 9 and Demo 10:
+Compare Demo 13 and Demo 14:
 
-  Demo 9 (exposed):
+  Demo 13 (exposed):
     Tools: read_config, query_database
     Model calls read_config("DATABASE_URL")
     → password enters the context window
     → extractable via injection
 
-  Demo 10 (isolated):
+  Demo 14 (isolated):
     Tools: query_database (only)
     Tool uses credential internally
     Model gets query results
@@ -30,22 +30,22 @@ model see the connection string.
 
 THE DEMO FLOW
   # "Same task, but look at the tools — no read_config"
-  cat demos/10_credential_isolation/tools.py
+  cat demos/14_credential_isolation/tools.py
 
   # "The model queries data just fine"
-  cat demos/10_credential_isolation/task.txt | python scripts/agent.py \
-      demos/10_credential_isolation/system_prompt.txt \
-      --tools demos/10_credential_isolation/tools.py
+  cat demos/14_credential_isolation/task.txt | python scripts/agent.py \
+      demos/14_credential_isolation/system_prompt.txt \
+      --tools demos/14_credential_isolation/tools.py
 
-  # Point out: the model got the same data as Demo 9
+  # Point out: the model got the same data as Demo 13
   # but NO credential appeared anywhere in the output
 
 THE PRINCIPLE
 If the model doesn't need the secret, the model shouldn't have a
 way to get the secret. This is least privilege applied to the
 context window:
-  - Demo 6 showed least privilege for ACTIONS (scoped tools)
-  - Demo 10 shows least privilege for KNOWLEDGE (isolated secrets)
+  - Demo 10 showed least privilege for ACTIONS (scoped tools)
+  - Demo 14 shows least privilege for KNOWLEDGE (isolated secrets)
 
 BROADER PATTERNS
 This principle extends beyond env vars:
@@ -75,6 +75,6 @@ Q: "Can the model infer the credential from the results?"
 A: Generally no — query results don't contain connection details.
    But this is worth thinking about for tools that return metadata
    (headers, connection info). Keep tool outputs clean — same
-   principle as error translation (Demo 8).
+   principle as error translation (Demo 12).
 
 COST: ~$0.003 per run

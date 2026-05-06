@@ -1,4 +1,4 @@
-DEMO 6: SCOPED TOOL — Least Privilege by Construction
+DEMO 10: SCOPED TOOL — Least Privilege by Construction
 
 KEY TAKEAWAY
 Don't give an agent broad access and hope it behaves. Give it narrow
@@ -86,17 +86,17 @@ THE DEMO FLOW — THREE PARTS
 Part 1: Show Pydantic validation in isolation (no API, no model)
 
   # "Let's see what Pydantic does. Valid ID:"
-  python scripts/run_tool.py demos/06_scoped_tool/tools.py restart_server \
+  python scripts/run_tool.py demos/10_scoped_tool/tools.py restart_server \
     '{"server_id": "SRV-1002", "reason": "test"}'
   # → success
 
   # "Fabricated ID:"
-  python scripts/run_tool.py demos/06_scoped_tool/tools.py restart_server \
+  python scripts/run_tool.py demos/10_scoped_tool/tools.py restart_server \
     '{"server_id": "SRV-9999", "reason": "test"}'
   # → VALIDATION ERROR: not found in inventory
 
   # "Wrong format entirely:"
-  python scripts/run_tool.py demos/06_scoped_tool/tools.py restart_server \
+  python scripts/run_tool.py demos/10_scoped_tool/tools.py restart_server \
     '{"server_id": "just-a-guess", "reason": "test"}'
   # → VALIDATION ERROR: does not match SRV-#### format
 
@@ -104,9 +104,9 @@ Part 1: Show Pydantic validation in isolation (no API, no model)
 
 Part 2: The happy path — agent uses tools correctly
 
-  cat demos/06_scoped_tool/task.txt | python scripts/agent.py \
-      demos/06_scoped_tool/system_prompt.txt \
-      --tools demos/06_scoped_tool/tools.py
+  cat demos/10_scoped_tool/task.txt | python scripts/agent.py \
+      demos/10_scoped_tool/system_prompt.txt \
+      --tools demos/10_scoped_tool/tools.py
 
   The audience sees:
     1. Model calls list_servers(rack=7) — looks up real data
@@ -115,9 +115,9 @@ Part 2: The happy path — agent uses tools correctly
 
 Part 3: The catch — model tries a fabricated ID, Pydantic stops it
 
-  cat demos/06_scoped_tool/task_fabricated.txt | python scripts/agent.py \
-      demos/06_scoped_tool/system_prompt.txt \
-      --tools demos/06_scoped_tool/tools.py
+  cat demos/10_scoped_tool/task_fabricated.txt | python scripts/agent.py \
+      demos/10_scoped_tool/system_prompt.txt \
+      --tools demos/10_scoped_tool/tools.py
 
   The audience sees:
     1. Model tries restart_server("SRV-7042") — a fabricated ID
@@ -125,8 +125,8 @@ Part 3: The catch — model tries a fabricated ID, Pydantic stops it
     3. Model self-corrects: calls list_servers to get real IDs
     4. The validation caught the fabrication before any action was taken
 
-CONNECTION TO DEMO 2 (HALLUCINATION)
-In Demo 2, the model fabricated a server ID because it had no way to
+CONNECTION TO DEMO 3 (HALLUCINATION)
+In Demo 3, the model fabricated a server ID because it had no way to
 look one up. Here, the model has a tool to look up real IDs. It doesn't
 need to fabricate because it can query the source of truth.
 

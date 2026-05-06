@@ -46,10 +46,10 @@ For agents, this means:
     the agent knows is in the current context window
 
 CONNECTION TO OTHER DEMOS
-  - Context pollution (Demo 8/11): noise in the context hurts because
+  - Context pollution (Demo 11): noise in the context hurts because
     the context IS the only memory. Garbage in the memory = garbage
     reasoning.
-  - Error translation (Demo 9/12): cleaning what goes into context
+  - Error translation (Demo 12): cleaning what goes into context
     matters because it's the only memory the model has to work with.
 
 Q&A PREPARATION

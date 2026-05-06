@@ -65,7 +65,7 @@ A: It means they need testing like any other code. If your prompt
 
 Q: "How do I write robust prompts?"
 A: Structure over prose. Use system prompts for the role, schemas
-   for the output format (Demo 3: structured output), and examples
+   for the output format (Demo 19: structured extraction), and examples
    for the expected behavior. The more structure, the less sensitive
    to phrasing.
 

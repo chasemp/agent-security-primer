@@ -1,4 +1,4 @@
-DEMO 6: PLAN MODE — Terraform Plan for Agents
+DEMO 9: PLAN MODE — Terraform Plan for Agents
 
 KEY TAKEAWAY
 The model doesn't execute anything. It writes JSON that says "I want
@@ -27,24 +27,24 @@ and you review before applying.
 THE DEMO FLOW
 
   # "Here are the tools available to the agent"
-  cat demos/06_plan_mode/tools.py
+  cat demos/09_plan_mode/tools.py
 
   # "Here's the task"
-  cat demos/06_plan_mode/task.txt
+  cat demos/09_plan_mode/task.txt
 
   # "Plan mode — show what the model WANTS to do"
-  cat demos/06_plan_mode/task.txt | python scripts/agent.py \
-      demos/06_plan_mode/system_prompt.txt \
-      --tools demos/06_plan_mode/tools.py \
+  cat demos/09_plan_mode/task.txt | python scripts/agent.py \
+      demos/09_plan_mode/system_prompt.txt \
+      --tools demos/09_plan_mode/tools.py \
       --plan
 
   # Output shows [PROPOSED] — not [TOOL CALL]
   # Nothing executed. Just the model's intent.
 
-  # "Now let's actually run it (Demo 7)"
-  cat demos/07_scoped_tool/task.txt | python scripts/agent.py \
-      demos/07_scoped_tool/system_prompt.txt \
-      --tools demos/07_scoped_tool/tools.py
+  # "Now let's actually run it (Demo 10)"
+  cat demos/10_scoped_tool/task.txt | python scripts/agent.py \
+      demos/10_scoped_tool/system_prompt.txt \
+      --tools demos/10_scoped_tool/tools.py
 
   # Same tools, same task. Now [TOOL CALL] and [TOOL RESULT] appear.
 
@@ -67,9 +67,9 @@ When the model "calls a tool," here's what actually happens:
      The model proposed. You declined. That's it.
 
 This is the fundamental security boundary of every AI agent.
-Every other demo builds on this: scoped tools (Demo 7), context
-pollution (Demo 8), error translation (Demo 9), credential
-isolation (Demo 11) — all of them live in that "YOUR CODE" box.
+Every other demo builds on this: scoped tools (Demo 10), context
+pollution (Demo 11), error translation (Demo 12), credential
+isolation (Demo 14) — all of them live in that "YOUR CODE" box.
 
 WHY PLAN MODE MATTERS
 

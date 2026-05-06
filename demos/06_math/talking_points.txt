@@ -1,4 +1,4 @@
-DEMO 3: MATH — LLMs Are Not Calculators
+DEMO 6: MATH — LLMs Are Not Calculators
 
 KEY TAKEAWAY
 LLMs predict tokens, they don't compute. When a model does arithmetic,

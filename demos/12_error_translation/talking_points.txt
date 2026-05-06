@@ -1,4 +1,4 @@
-DEMO 8: ERROR TRANSLATION — The Bouncer Cleans Up Outputs
+DEMO 12: ERROR TRANSLATION — The Bouncer Cleans Up Outputs
 
 KEY TAKEAWAY
 Error translation is not error handling. It's context curation. You're
@@ -8,7 +8,7 @@ clean decision.
 
 THE BOUNCER HAS TWO DOORS
 
-Demo 6 showed the bouncer on the way IN: Pydantic validates tool
+Demo 10 showed the bouncer on the way IN: Pydantic validates tool
 inputs before any action is taken.
 
 This demo shows the bouncer on the way OUT: errors are translated
@@ -22,11 +22,11 @@ before they re-enter the context window.
   context  ←  │                 │  ←  raw result
   (clean)     └─────────────────┘     (messy)
 
-Both directions matter. Demo 7 showed what happens without either.
+Both directions matter. Demo 11 showed what happens without either.
 
 THE ONE-FUNCTION FIX
 
-The entire difference between Demo 7 and Demo 8 is this function:
+The entire difference between Demo 11 and Demo 12 is this function:
 
   def _translate_error(raw_error, server_id):
       return json.dumps({
@@ -44,19 +44,19 @@ and makes a clean decision in one turn.
 
 THE DEMO FLOW — SIDE BY SIDE
 
-  # "First, Demo 7 — raw errors (the audience already saw this)"
-  cat demos/07_context_pollution/task.txt | python scripts/agent.py \
-      demos/07_context_pollution/system_prompt.txt \
-      --tools demos/07_context_pollution/tools.py
+  # "First, Demo 11 — raw errors (the audience already saw this)"
+  cat demos/11_context_pollution/task.txt | python scripts/agent.py \
+      demos/11_context_pollution/system_prompt.txt \
+      --tools demos/11_context_pollution/tools.py
 
   # "Now the same task with translated errors"
-  cat demos/08_error_translation/task.txt | python scripts/agent.py \
-      demos/08_error_translation/system_prompt.txt \
-      --tools demos/08_error_translation/tools.py
+  cat demos/12_error_translation/task.txt | python scripts/agent.py \
+      demos/12_error_translation/system_prompt.txt \
+      --tools demos/12_error_translation/tools.py
 
   Compare:
-    Demo 7: 4 turns, ~6,800 input tokens, $0.009, FAILURE
-    Demo 8: 2 turns, ~2,000 input tokens, $0.003, clean report
+    Demo 11: 4 turns, ~6,800 input tokens, $0.009, FAILURE
+    Demo 12: 2 turns, ~2,000 input tokens, $0.003, clean report
 
   Same broken service. Same task. The only difference is one
   translation function.

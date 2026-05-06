@@ -1,4 +1,4 @@
-DEMO 9: CREDENTIAL EXPOSURE — .env Solved the Git Problem, Not the Agent Problem
+DEMO 13: CREDENTIAL EXPOSURE — .env Solved the Git Problem, Not the Agent Problem
 
 KEY TAKEAWAY
 Putting credentials in .env keeps them out of source control. But
@@ -17,7 +17,7 @@ read_config("DATABASE_URL") and get back:
 
 That connection string — including the password — is now a token in
 the context window. Every subsequent turn, the model re-reads it.
-And if an injection attack (Demo 1) steers the model to output the
+And if an injection attack (Demo 2) steers the model to output the
 context or include it in a response, the credential is exfiltrated.
 
 The git problem and the agent problem are DIFFERENT problems:
@@ -36,15 +36,15 @@ The connection string with embedded password enters the context.
 
 THE PRESENTER FLOW
   # "Notice: read_config is available as a tool"
-  cat demos/09_credential_exposure/tools.py
+  cat demos/13_credential_exposure/tools.py
 
   # "The task asks the model to check configuration first"
-  cat demos/09_credential_exposure/task.txt
+  cat demos/13_credential_exposure/task.txt
 
   # "Watch what happens"
-  cat demos/09_credential_exposure/task.txt | python scripts/agent.py \
-      demos/09_credential_exposure/system_prompt.txt \
-      --tools demos/09_credential_exposure/tools.py
+  cat demos/13_credential_exposure/task.txt | python scripts/agent.py \
+      demos/13_credential_exposure/system_prompt.txt \
+      --tools demos/13_credential_exposure/tools.py
 
   # Point out: the password is now visible in the output
 
@@ -52,14 +52,14 @@ Q&A PREPARATION
 
 Q: "But we told the model to check config — isn't that our fault?"
 A: Partially. But in a real agent, the model decides which tools to
-   call. An injection in the user's data (Demo 1) could steer the
+   call. An injection in the user's data (Demo 2) could steer the
    model to call read_config even if the original task didn't ask
    for it. The vulnerability is that the tool EXISTS, not that we
    asked for it.
 
 Q: "Can't we just filter secrets from tool output?"
-A: That's output-side error translation (Demo 8). It helps, but
-   it's defense in depth, not the fix. The fix is Demo 10:
+A: That's output-side error translation (Demo 12). It helps, but
+   it's defense in depth, not the fix. The fix is Demo 14:
    don't give the model a tool that can read secrets.
 
 COST: ~$0.005 per run

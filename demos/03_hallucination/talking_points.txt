@@ -1,4 +1,4 @@
-DEMO 2: HALLUCINATION — The Model Fabricates to Complete a Pattern
+DEMO 3: HALLUCINATION — The Model Fabricates to Complete a Pattern
 
 KEY TAKEAWAY
 LLMs have no "I don't know" mechanism. When asked to produce a

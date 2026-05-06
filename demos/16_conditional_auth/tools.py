@@ -97,7 +97,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "server_action",
-        "description": "Perform an action on a server (restart, stop, start, delete). Delete requires supervisor_approved=True.",
+        "description": "Perform an action on a server. Valid actions: restart, stop, start, delete.",
         "input_schema": ServerActionInput.model_json_schema(),
     },
 ]

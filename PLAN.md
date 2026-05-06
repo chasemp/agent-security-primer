@@ -329,7 +329,7 @@ to the State Ledger pattern and the Logfire/OTel stack.
 ## Test Modes
 
 - `pytest` — fast structural tests, no API calls (693 tests)
-- `pytest -m live` — pre-flight behavioral tests, real API (~$0.08)
+- `pytest -m live` — 48 pre-flight behavioral tests, real API (~$0.05, ~7 min)
 
 ## Audience Variants
 

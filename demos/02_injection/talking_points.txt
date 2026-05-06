@@ -1,4 +1,4 @@
-DEMO 1: PROMPT INJECTION — Data and Code Are the Same Thing
+DEMO 2: PROMPT INJECTION — Data and Code Are the Same Thing
 
 KEY TAKEAWAY
 An LLM has no boundary between "instructions" and "data." Everything
@@ -49,7 +49,7 @@ A: All transformer-based LLMs have this property. It's architectural,
 
 Q: "What's the defense?"
 A: Never trust model output on data you don't control. Validate at
-   the boundaries. Use structured output + validation (Demo 2 shows
+   the boundaries. Use structured output + validation (Demo 3 shows
    this). Sanitize inputs. Treat the model's output as untrusted
    user input, because when processing external data, it effectively
    is.

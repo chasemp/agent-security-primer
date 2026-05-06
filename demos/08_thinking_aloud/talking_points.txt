@@ -1,4 +1,4 @@
-DEMO 5: THINKING ALOUD — Watch the Model Reason
+DEMO 8: THINKING ALOUD — Watch the Model Reason
 
 KEY TAKEAWAY
 The model is not a black box. With extended thinking enabled, you can
@@ -27,7 +27,7 @@ the audience watches it:
 3. Consider whether to fabricate an ID or say it can't help
 4. Make a decision and justify it
 
-This connects directly to Demo 2 (Hallucination). The audience has
+This connects directly to Demo 3 (Hallucination). The audience has
 already seen the model fabricate a server ID. Now they get to watch
 the reasoning that PRODUCED the fabrication.
 
@@ -123,8 +123,8 @@ A: Yes. They're useful for debugging agent behavior, audit trails,
 
 Q: "Does thinking make the model more accurate?"
 A: Generally yes — chain-of-thought reasoning improves accuracy
-   on complex tasks. But it doesn't eliminate hallucination (Demo 2)
-   or math errors (Demo 3). It just makes the reasoning path visible
+   on complex tasks. But it doesn't eliminate hallucination (Demo 3)
+   or math errors (Demo 6). It just makes the reasoning path visible
    so you can see WHERE things went wrong.
 
 Q: "Why can I see the thinking? Isn't that the model's 'private' reasoning?"
@@ -150,7 +150,7 @@ A: Yes. When an agent has tools available, the thinking block often
    model's plan-before-action process. The budget constrains how
    much planning the model can do. A tight budget may cause the
    model to skip planning and jump straight to action — which is
-   exactly the kind of behavior that leads to fabrication (Demo 2).
+   exactly the kind of behavior that leads to fabrication (Demo 3).
 
 
 PART 2: ADAPTIVE THINKING AND EFFORT — The Production Controls

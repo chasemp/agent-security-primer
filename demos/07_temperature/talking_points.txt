@@ -1,4 +1,4 @@
-DEMO 4: TEMPERATURE — The Model Is Deterministic, the Inference Layer Is Not
+DEMO 7: TEMPERATURE — The Model Is Deterministic, the Inference Layer Is Not
 
 KEY TAKEAWAY
 The model weights are fixed. Given the same input, the model produces
