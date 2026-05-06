@@ -67,6 +67,26 @@ This is more realistic than an HTML comment because it looks like
 a real edit. Someone with wiki access adds a notice. It looks
 official. The agent reads it and reports the project as cancelled.
 
+PRESENTER NOTE — STOCHASTIC RESISTANCE
+On Haiku 4.5, the model sometimes notices the inconsistency between
+the page's main content (project active, phase 3 of 4) and the fake
+update notice (project cancelled), and flags it instead of falling
+for it. That's good defensive behavior, but it breaks the demo's
+primary lesson.
+
+If you see resistance on stage:
+  - Re-run; the same input can produce different responses
+  - Note that the resistance IS itself the secondary lesson —
+    defenses are partial and inconsistent. The injection still
+    entered the context window. The model still had to reason about
+    it. That reasoning is the attack surface, even when the model
+    handles it correctly this time.
+
+The demo's deeper point holds either way: any tool that reads
+external data is a potential injection vector. Whether the model
+falls for a particular payload is probabilistic; whether the
+mechanism EXISTS is architectural.
+
 CONNECTION TO OTHER DEMOS
   - Demo 02 (Injection): same mechanism, different vector
   - Demo 12 (Error Translation): the bouncer on outputs can sanitize

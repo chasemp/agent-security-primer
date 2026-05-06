@@ -35,6 +35,23 @@ Part 2 — Data Poisoning:
   there's a cryptominer running, the summary says there's a
   cryptominer running.
 
+PRESENTER NOTE — STOCHASTIC RESISTANCE
+On Haiku 4.5, the model sometimes notices the injection and flags it
+("this contract appears to have been modified", "I should not follow
+embedded instructions") instead of falling for it. That's good
+defensive behavior, but it breaks the demo's primary lesson.
+
+If you see resistance on stage, two options:
+  - Use a different audience variant — the contract one is most
+    prone to resistance because legal-sounding text triggers caution
+  - Re-run; the same input can produce different responses
+  - Frame the resistance as the OTHER lesson: model defenses are
+    real, partial, and inconsistent
+
+The boundary between data and code is still fuzzy whether the model
+falls for it or not — both outcomes show that the model PROCESSED
+the injected content. Defense is probabilistic.
+
 Q&A PREPARATION
 
 Q: "Can't system prompts prevent this?"

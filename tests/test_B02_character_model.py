@@ -274,53 +274,39 @@ class TestCharModelLive:
         assert len(result.stdout.strip()) >= 50
 
     @pytest.mark.live
-    def test_training_improves_output(self) -> None:
-        """After more training, generated text should contain more
-        real words from the corpus."""
+    def test_training_reduces_loss(self) -> None:
+        """More training reduces loss. This is the underlying signal
+        that the model is learning the corpus.
+
+        (We intentionally don't test camp-word density in generated
+        output: a better-trained model produces *more varied* text,
+        which can include fewer instances of any specific common word
+        on a given seed. Loss is the reliable signal; varied output
+        is the qualitative payoff the demo shows on stage.)"""
+        import re
         import subprocess
 
-        # Train briefly (5 epochs)
-        subprocess.run(
-            [PYTHON, str(SCRIPT), str(CORPUS_DIR / "camp_letters.txt"),
-             "--train", "--epochs", "5", "--reset"],
-            check=True,
-            capture_output=True,
-            timeout=60,
-        )
+        LOSS_RE = re.compile(r"Epoch\s+\d+:\s+loss\s+([\d.]+)")
+
+        def final_loss(stdout: str) -> float:
+            matches = LOSS_RE.findall(stdout)
+            assert matches, f"no epoch losses found in training output:\n{stdout}"
+            return float(matches[-1])
+
         early = subprocess.run(
             [PYTHON, str(SCRIPT), str(CORPUS_DIR / "camp_letters.txt"),
-             "--generate", "--chars", "200", "--seed", "42"],
-            capture_output=True,
-            text=True,
-            timeout=30,
+             "--train", "--epochs", "5", "--reset"],
+            capture_output=True, text=True, check=True, timeout=60,
         )
+        early_loss = final_loss(early.stdout)
 
-        # Train more (50 additional epochs)
-        subprocess.run(
-            [PYTHON, str(SCRIPT), str(CORPUS_DIR / "camp_letters.txt"),
-             "--train", "--epochs", "50"],
-            check=True,
-            capture_output=True,
-            timeout=120,
-        )
         later = subprocess.run(
             [PYTHON, str(SCRIPT), str(CORPUS_DIR / "camp_letters.txt"),
-             "--generate", "--chars", "200", "--seed", "42"],
-            capture_output=True,
-            text=True,
-            timeout=30,
+             "--train", "--epochs", "50"],
+            capture_output=True, text=True, check=True, timeout=120,
         )
+        later_loss = final_loss(later.stdout)
 
-        # Count recognizable camp words in each output
-        camp_words = {"dear", "mom", "dad", "camp", "love", "miss", "cabin", "lake", "fun"}
-
-        def count_camp_words(text: str) -> int:
-            return sum(1 for w in text.lower().split() if w.strip(".,!?") in camp_words)
-
-        early_count = count_camp_words(early.stdout)
-        later_count = count_camp_words(later.stdout)
-
-        # Later output should have more recognizable words
-        assert later_count >= early_count, (
-            f"Expected more camp words after training: early={early_count}, later={later_count}"
+        assert later_loss < early_loss, (
+            f"More training should reduce loss: early={early_loss}, later={later_loss}"
         )
