@@ -221,7 +221,7 @@ show where prediction IS reasoning — and how to verify it stays
 that way. Each demo has two faces: what the model does well, and
 the technique that makes it reliable.
 
-**Status**: 4 demos built (18-20, S01), 6 planned.
+**Status**: 5 demos built (18-20, S01, S02), 5 planned.
 
 ### Existing Demos
 
@@ -231,6 +231,7 @@ the technique that makes it reliable.
 | 19 | Structured Extraction | Schema narrows the prediction menu | ask_claude.py --schema (4 variants) |
 | 20 | Semantic Classification | Reads meaning, not keywords | ask_claude.py (4 variants) |
 | S01 | Golden Dataset Baseline | Curate known-good pairs, score prompt versions | eval.py + golden.jsonl |
+| S02 | Process vs Outcome Eval | Outcome=binary, process=graded; same answers, different signal | eval.py --process |
 
 ### Planned Demos
 
@@ -239,7 +240,6 @@ the technique that makes it reliable.
 | 25 | Domain Translation | Persona/audience framing steers predictions | Planned |
 | 26 | Rubric-Based Evaluation | Explicit criteria shape evaluation patterns | Planned |
 | 27 | Diagnosis from Evidence | Full context enables better reasoning | Planned |
-| S02 | Process vs Outcome Eval | Score steps vs final answer — catch what pass/fail misses | Planned |
 | S03 | Consistency Voting | Run 3x, measure agreement, detect hallucination | Planned |
 | S04 | Structured Observability | model_dump() makes every decision inspectable | Planned |
 
@@ -328,8 +328,8 @@ to the State Ledger pattern and the Logfire/OTel stack.
 
 ## Test Modes
 
-- `pytest` — fast structural tests, no API calls (693 tests)
-- `pytest -m live` — 48 pre-flight behavioral tests, real API (~$0.05, ~7 min)
+- `pytest` — fast structural tests, no API calls (717 tests)
+- `pytest -m live` — 49 pre-flight behavioral tests, real API (~$0.05, ~7 min)
 
 ## Audience Variants
 

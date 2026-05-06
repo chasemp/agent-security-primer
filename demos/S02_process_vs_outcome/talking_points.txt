@@ -1,0 +1,142 @@
+KEY TAKEAWAY
+Outcome eval gives one bit per entry: did the answer match? Process
+eval gives N bits: did each step of the reasoning happen? Same model,
+same dataset, same answers, radically different signal. The metric
+you choose determines what "better" means — and whether you can
+improve the system at all.
+
+BACKGROUND
+S01 introduced the golden dataset: known-good (input, expected) pairs
+you can score any prompt against. S01 used outcome scoring — for each
+entry, did the response contain the expected label?
+
+That's enough to detect prompt regressions, but it can't detect
+reasoning regressions. A response that says "15" passes the same as
+a response that says "Week 1 had 3 letters, week 2 had 5, week 3 had
+7. So 3 + 5 + 7 = 15." Both are correct. Outcome eval can't tell you
+which is more useful — for debugging, for auditing, for training.
+
+Process eval scores the reasoning itself. We use three independent
+markers, each yes/no:
+  shows_arithmetic         — contains an operator (+, -, *, ×, /)
+  shows_intermediate_value — at least 3 distinct numbers in the response
+  shows_reasoning_steps    — sequencing words (step, then, so, =, etc.)
+
+Each entry gets 0-3 process points. Aggregate across the dataset =
+your process score. Same dataset, same model, two scorers, two
+signals.
+
+CONNECTION TO PILLAR 1 (B05/B06)
+This is the same lesson at training time. B05 (Outcome Reward) trained
+with pass/fail on final outputs only — slow, noisy convergence. B06
+(Process Reward) scored each step — fast convergence on the same data.
+The principle is identical: dense signal accelerates improvement.
+Whether you're training a model or evaluating one, sparse signal hides
+what dense signal exposes. Carol Dweck's growth-vs-fixed mindset is the
+human-scale parallel: "you got an A" tells you the outcome; "your
+paragraph 3 evidence didn't support your thesis" tells you what to fix.
+
+THE DEMO
+Two prompts on the same 8-question math dataset:
+  v1: "Solve step by step. Show your reasoning." (verbose)
+  v2: "Answer with the final number only." (terse)
+
+PAYOFF 1 — Outcome eval can't tell them apart.
+  v1 outcome accuracy: 8/8 = 100%
+  v2 outcome accuracy: 8/8 = 100%
+  Both prompts get every answer right. Outcome score: identical.
+  If outcome is your only signal, v2 looks equivalent to v1 — and
+  it's 6x cheaper ($0.0007 vs $0.0045).
+
+PAYOFF 2 — Process eval reveals the chasm.
+  v1 process score: 24/24 = 100%
+  v2 process score:  0/24 =   0%
+  v2 produces no arithmetic, no intermediate values, no reasoning
+  markers. The model definitely DID the reasoning — it got 8/8
+  right — but no audit trail survived to the response. Process eval
+  shows what outcome eval hid.
+
+The 0% process on v2 isn't a model failure. It's a prompt design
+choice with consequences. The audience sees the consequences as
+numbers, not vibes.
+
+PRESENTER FLOW
+
+Step 1 — Inspect the dataset (same JSONL shape as S01).
+  wc -l demos/S02_process_vs_outcome/golden.jsonl
+  jq -r .input demos/S02_process_vs_outcome/golden.jsonl | head -3
+
+Step 2 — Run v1 (step-by-step) with outcome only.
+  python scripts/eval.py demos/S02_process_vs_outcome/golden.jsonl \
+    --prompt demos/S02_process_vs_outcome/system_prompt_v1.txt
+  # Expect: 8/8 = 100%. Looks great.
+
+Step 3 — Run v2 (just the answer) with outcome only.
+  python scripts/eval.py demos/S02_process_vs_outcome/golden.jsonl \
+    --prompt demos/S02_process_vs_outcome/system_prompt_v2.txt
+  # Expect: 8/8 = 100%. Also looks great. Outcome eval can't
+  # distinguish v1 from v2.
+
+Step 4 — Same runs, with --process.
+  python scripts/eval.py demos/S02_process_vs_outcome/golden.jsonl \
+    --prompt demos/S02_process_vs_outcome/system_prompt_v1.txt --process
+  # v1: 24/24 = 100% process
+
+  python scripts/eval.py demos/S02_process_vs_outcome/golden.jsonl \
+    --prompt demos/S02_process_vs_outcome/system_prompt_v2.txt --process
+  # v2:  0/24 =   0% process. Same model. Same answers.
+
+Pause here. Ask the audience: "if you only had outcome eval, would
+you prefer v1 or v2?" v2 is cheaper and same accuracy. Now ask: "if
+you needed to debug a wrong answer, which prompt's output is more
+useful?" The trade-off is now visible.
+
+WHY THIS MATTERS
+You can't improve a system on a signal you don't have. If your eval
+gives you "78% pass" and nothing else, you can A/B prompt versions
+but you can't see WHY one is better. Process eval gives you the
+diff: "v1 shows arithmetic 95% of the time; v2 shows it 12%."
+That's actionable.
+
+For training (RLHF, DPO, etc.) the same principle applies at scale.
+Process reward converges faster than outcome reward because every
+step is signal, not just the final answer. B06 in Pillar 1 showed
+this from scratch.
+
+For audit and observability, process visibility IS the audit trail.
+A response that says only "15" cannot be audited — there's nothing
+to inspect. A response that shows the work is auditable by humans
+or by another model.
+
+Q&A PREPARATION
+
+Q: Isn't process eval just "did the model respond verbosely"?
+A: It's a proxy for that, yes — and that's the point. Verbosity
+   correlates with showing work; showing work correlates with
+   debuggability and auditability. The three markers we use
+   (arithmetic, numbers, sequencing) are mechanical, not LLM-judged,
+   so they're cheap and reliable. For richer rubrics you'd use
+   LLM-as-judge — same principle, more expensive.
+
+Q: Why isn't v2's lower cost a win?
+A: It is — for some use cases. If you genuinely just need the
+   number and don't care about debuggability, v2 is right. The
+   point isn't that v1 is always better; it's that without process
+   eval you can't make this trade-off knowingly.
+
+Q: Could you score processes on Pillar 2 demos too?
+A: Yes — Demo 16's "model attempts delete, validator rejects, model
+   adapts" is process-shaped behavior. Outcome eval would just check
+   "did the action eventually succeed". Process eval would check
+   "did the model reach the success path through good intermediate
+   steps". Eval methodology generalizes.
+
+Q: Does process eval require the rubric to be specific to each task?
+A: For richer rubrics, yes. The mechanical markers we use here are
+   task-agnostic — they apply to any reasoning response. Production
+   eval harnesses often layer task-specific rubrics on top.
+
+COST
+~16 API calls (8 problems x 2 prompts) on haiku-4-5 at temp=0.
+v1: ~$0.0045 per pass (verbose). v2: ~$0.0007 per pass (terse).
+Total: ~$0.005 per full demo run.

@@ -1,0 +1,8 @@
+{"input": "Sophie wrote 3 letters in week 1, 5 in week 2, and 7 in week 3. How many letters did she write total?", "expected": "15"}
+{"input": "If 8 kids each wrote 2 letters per week for 4 weeks, how many letters total?", "expected": "64"}
+{"input": "A cabin holds 6 kids. Camp has 12 cabins, but 2 are reserved for staff. How many kids can stay in non-staff cabins?", "expected": "60"}
+{"input": "The mess hall serves 3 meals a day for 14 days. How many meals does it serve over the full session?", "expected": "42"}
+{"input": "Each canoe holds 2 kids. 18 kids want to canoe at the same time. How many canoes do they need?", "expected": "9"}
+{"input": "Lily mailed 12 letters home. Half were on rainy days. Of those rainy-day letters, 3 were lost in the mail. How many of her rainy-day letters arrived safely?", "expected": "3"}
+{"input": "The lake is 200 meters wide. Mateo swam one-quarter of the way across. How many meters did he swim?", "expected": "50"}
+{"input": "Camp lasts 14 days. Today is day 9. How many days are left until camp ends?", "expected": "5"}

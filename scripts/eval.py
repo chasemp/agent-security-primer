@@ -61,6 +61,38 @@ def score_response(response: str, expected: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Process scoring — does the response show its work?
+# ---------------------------------------------------------------------------
+
+_ARITHMETIC_OPS = re.compile(r"[+\-×*/÷]")
+_NUMBER_RE = re.compile(r"\d+")
+_REASONING_MARKERS = re.compile(
+    r"\b(step|first|second|third|then|next|so|therefore|finally|because|since)\b|=",
+    re.IGNORECASE,
+)
+
+
+def score_process(response: str) -> dict:
+    """Score whether the response shows its reasoning.
+
+    Three independent markers — each yes/no:
+      shows_arithmetic:        contains an operator (+, -, *, ×, /, ÷)
+      shows_intermediate_value: contains at least 3 distinct numbers
+      shows_reasoning_steps:    contains sequencing markers (step/then/=/etc.)
+
+    Returns: {"checks": {marker: bool}, "passed": int, "total": int}
+    """
+    distinct_numbers = set(_NUMBER_RE.findall(response))
+    checks = {
+        "shows_arithmetic": bool(_ARITHMETIC_OPS.search(response)),
+        "shows_intermediate_value": len(distinct_numbers) >= 3,
+        "shows_reasoning_steps": bool(_REASONING_MARKERS.search(response)),
+    }
+    passed = sum(1 for v in checks.values() if v)
+    return {"checks": checks, "passed": passed, "total": len(checks)}
+
+
+# ---------------------------------------------------------------------------
 # Eval loop
 # ---------------------------------------------------------------------------
 
@@ -86,6 +118,7 @@ def run_eval(
             "expected": entry["expected"],
             "prediction": prediction,
             "correct": score_response(prediction, entry["expected"]),
+            "process": score_process(prediction),
             "input_tokens": response.get("input_tokens", 0),
             "output_tokens": response.get("output_tokens", 0),
             "cost_usd": response.get("cost_usd", 0.0),
@@ -109,39 +142,64 @@ def summarize(results: list[dict]) -> dict:
         by_category[cat]["total"] += 1
         if r["correct"]:
             by_category[cat]["correct"] += 1
-    return {
+    summary = {
         "total": total,
         "correct": correct,
         "accuracy": correct / total if total else 0.0,
         "by_category": by_category,
         "total_cost_usd": sum(r.get("cost_usd", 0.0) for r in results),
     }
+    # Aggregate process score across entries that have it
+    process_results = [r["process"] for r in results if "process" in r]
+    if process_results:
+        passed = sum(p["passed"] for p in process_results)
+        possible = sum(p["total"] for p in process_results)
+        summary["process"] = {
+            "passed": passed,
+            "total": possible,
+            "fraction": passed / possible if possible else 0.0,
+        }
+    return summary
 
 
 # ---------------------------------------------------------------------------
 # Reporting
 # ---------------------------------------------------------------------------
 
-def format_report(results: list[dict], summary: dict) -> str:
-    """Human-readable report — per-entry results + accuracy summary."""
+def format_report(results: list[dict], summary: dict, show_process: bool = False) -> str:
+    """Human-readable report — per-entry results + accuracy summary.
+
+    show_process=True adds per-entry process markers and an aggregate
+    process score (used by S02 to compare reasoning quality across
+    prompt versions; S01 leaves it off and reports outcome only).
+    """
     lines: list[str] = []
     lines.append("=" * 70)
     lines.append("PER-ENTRY RESULTS")
     lines.append("=" * 70)
     for i, r in enumerate(results, 1):
         mark = "PASS" if r["correct"] else "FAIL"
-        # Truncate input for display
         snippet = r["input"][:60].replace("\n", " ")
         if len(r["input"]) > 60:
             snippet += "..."
         lines.append(f"{i:2d}. [{mark}] expected={r['expected']:12s} got={r['prediction'][:40]!r}")
         lines.append(f"    input: {snippet}")
+        if show_process and "process" in r:
+            checks = r["process"]["checks"]
+            marks = " ".join(
+                f"{name}={'Y' if hit else '.'}" for name, hit in checks.items()
+            )
+            lines.append(f"    process: {r['process']['passed']}/{r['process']['total']}  {marks}")
     lines.append("")
     lines.append("=" * 70)
     lines.append("SUMMARY")
     lines.append("=" * 70)
     accuracy_pct = summary["accuracy"] * 100
-    lines.append(f"Accuracy:  {summary['correct']}/{summary['total']} = {accuracy_pct:.1f}%")
+    lines.append(f"Outcome accuracy:  {summary['correct']}/{summary['total']} = {accuracy_pct:.1f}%")
+    if show_process and "process" in summary:
+        proc = summary["process"]
+        proc_pct = proc["fraction"] * 100
+        lines.append(f"Process score:     {proc['passed']}/{proc['total']} = {proc_pct:.1f}%")
     lines.append("")
     lines.append("Per category:")
     for cat in sorted(summary["by_category"]):
@@ -167,6 +225,8 @@ def main() -> None:
     parser.add_argument("--model", default="claude-haiku-4-5", help="Claude model")
     parser.add_argument("--temperature", type=float, default=0.0,
                         help="Sampling temperature (default 0 for determinism)")
+    parser.add_argument("--process", action="store_true",
+                        help="Show process score per entry (does the response show its work?)")
     args = parser.parse_args()
 
     golden = load_golden(Path(args.dataset))
@@ -179,7 +239,7 @@ def main() -> None:
 
     results = run_eval(golden, system_prompt, send)
     summary = summarize(results)
-    print(format_report(results, summary))
+    print(format_report(results, summary, show_process=args.process))
 
 
 if __name__ == "__main__":

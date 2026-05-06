@@ -177,6 +177,91 @@ class TestSummarize:
 # format_report — human-readable output
 # ---------------------------------------------------------------------------
 
+class TestScoreProcess:
+    """Process score: does the response show its work?
+
+    Three independent markers — each is a yes/no:
+      shows_arithmetic: at least one operator like +, -, ×, *, /
+      shows_intermediate_value: at least 3 distinct numbers
+      shows_reasoning_steps: contains step/then/first/next/so/therefore/= markers
+
+    Returns dict with per-marker booleans and aggregate score (0-3).
+    """
+
+    def test_terse_answer_scores_zero(self) -> None:
+        result = eval_mod.score_process("15")
+        assert result["passed"] == 0
+        assert result["total"] == 3
+
+    def test_arithmetic_scores_high(self) -> None:
+        result = eval_mod.score_process("3 + 5 + 7 = 15")
+        assert result["checks"]["shows_arithmetic"] is True
+        assert result["checks"]["shows_intermediate_value"] is True
+
+    def test_step_words_score_reasoning(self) -> None:
+        result = eval_mod.score_process(
+            "First, week 1 had 3 letters. Then week 2 had 5. So total is 15."
+        )
+        assert result["checks"]["shows_reasoning_steps"] is True
+
+    def test_full_reasoning_passes_all_three(self) -> None:
+        result = eval_mod.score_process(
+            "Step 1: week 1 had 3 letters. Step 2: week 2 had 5. "
+            "So 3 + 5 + 7 = 15. Final answer: 15."
+        )
+        assert result["passed"] == 3
+
+    def test_unicode_multiplication_sign(self) -> None:
+        result = eval_mod.score_process("8 × 2 = 16")
+        assert result["checks"]["shows_arithmetic"] is True
+
+    def test_passed_total_consistent(self) -> None:
+        result = eval_mod.score_process("just 42")
+        assert result["passed"] == sum(1 for v in result["checks"].values() if v)
+        assert result["total"] == len(result["checks"])
+
+
+class TestRunEvalIncludesProcess:
+    def test_each_result_has_process_score(self, tmp_jsonl: Path) -> None:
+        golden = eval_mod.load_golden(tmp_jsonl)
+        send = make_fake_send(["3 + 5 + 7 = 15", "homesick", "homesick"])
+        results = eval_mod.run_eval(golden, "system prompt", send)
+        for r in results:
+            assert "process" in r
+            assert "checks" in r["process"]
+            assert "passed" in r["process"]
+
+
+class TestSummarizeIncludesProcess:
+    def test_aggregate_process_score(self) -> None:
+        results = [
+            {"expected": "a", "prediction": "a", "correct": True,
+             "process": {"checks": {"x": True, "y": True, "z": True}, "passed": 3, "total": 3}},
+            {"expected": "b", "prediction": "b", "correct": True,
+             "process": {"checks": {"x": True, "y": False, "z": False}, "passed": 1, "total": 3}},
+        ]
+        summary = eval_mod.summarize(results)
+        # Process score: average passed/total across entries
+        assert "process" in summary
+        # Total possible: 2 entries * 3 checks = 6. Passed: 3+1 = 4.
+        assert summary["process"]["passed"] == 4
+        assert summary["process"]["total"] == 6
+
+
+class TestFormatReportShowsProcess:
+    def test_report_includes_process_line(self) -> None:
+        results = [
+            {"input": "x", "expected": "15", "prediction": "15", "correct": True,
+             "process": {"checks": {"shows_arithmetic": False,
+                                    "shows_intermediate_value": False,
+                                    "shows_reasoning_steps": False},
+                         "passed": 0, "total": 3}},
+        ]
+        summary = eval_mod.summarize(results)
+        report = eval_mod.format_report(results, summary, show_process=True)
+        assert "process" in report.lower() or "PROCESS" in report
+
+
 class TestFormatReport:
     def test_includes_accuracy_percentage(self) -> None:
         results = [
